@@ -6,7 +6,7 @@ import (
 	"text/template"
 
 	"github.com/knq/snaker"
-	"github.com/knq/xo/models"
+	"github.com/sandeepone/xo/models"
 )
 
 // NewTemplateFuncs returns a set of template funcs bound to the supplied args.
@@ -14,7 +14,9 @@ func (a *ArgType) NewTemplateFuncs() template.FuncMap {
 	return template.FuncMap{
 		"colcount":       a.colcount,
 		"colnames":       a.colnames,
+		"colnamesdb":     a.colnamesdb,
 		"colnamesquery":  a.colnamesquery,
+		"colnameswhere":  a.colnameswhere,
 		"colprefixnames": a.colprefixnames,
 		"colvals":        a.colvals,
 		"fieldnames":     a.fieldnames,
@@ -188,6 +190,36 @@ func (a *ArgType) colnames(fields []*Field, ignoreNames ...string) string {
 	return str
 }
 
+// colnamesdb creates a list of the column names found in fields, excluding any
+// Field with Name contained in ignoreNames.
+//
+// Used to present a comma separated list of column names, that can be used in
+// a SELECT, or UPDATE, or other SQL clause requiring an list of identifiers
+// (ie, "field_1, field_2, field_3, ...").
+func (a *ArgType) colnamesdb(fields []*Field, ignoreNames ...string) string {
+	ignore := map[string]bool{}
+	for _, n := range ignoreNames {
+		ignore[n] = true
+	}
+
+	str := ""
+	i := 0
+	for _, f := range fields {
+		if ignore[f.Name] {
+			continue
+		}
+
+		if i != 0 {
+			str = str + ", "
+		}
+		str = str + "\"" + a.colname(f.Col) + "\""
+
+		i++
+	}
+
+	return str
+}
+
 // colnamesquery creates a list of the column names in fields as a query and
 // joined by sep, excluding any Field with Name contained in ignoreNames.
 //
@@ -215,6 +247,48 @@ func (a *ArgType) colnamesquery(fields []*Field, sep string, ignoreNames ...stri
 	}
 
 	return str
+}
+
+// colnameswhere creates a list of the column names in fields as a query and
+// joined by sep, excluding any Field with Name contained in ignoreNames.
+//
+// Used to create a list of column names in a WHERE clause (ie, "field_1 = $1
+// AND field_2 = $2 AND ...") or in an UPDATE clause (ie, "field = $1, field =
+// $2, ...").
+func (a *ArgType) colnameswhere(fields []*Field, ignoreNames ...string) map[string]string {
+	ignore := map[string]bool{}
+	for _, n := range ignoreNames {
+		ignore[n] = true
+	}
+
+	vals := map[string]string{}
+	i := 0
+	for _, f := range fields {
+		if ignore[f.Name] {
+			continue
+		}
+
+		s := "v" + strconv.Itoa(i)
+		if len(f.Name) > 0 {
+			n := strings.Split(snaker.CamelToSnake(f.Name), "_")
+			s = strings.ToLower(n[0]) + f.Name[len(n[0]):]
+		}
+
+		// check go reserved names
+		if r, ok := goReservedNames[strings.ToLower(s)]; ok {
+			s = r
+		}
+		
+		vals[a.colname(f.Col)] = s
+		//str := "" + a.colname(f.Col) + " = " + a.Loader.NthParam(i) + ", " + s
+
+		// add to vals
+		//vals = append(vals, str)
+
+		i++
+	}
+
+	return vals
 }
 
 // colprefixnames creates a list of the column names found in fields with the
