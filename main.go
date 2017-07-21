@@ -81,12 +81,12 @@ func main() {
 		os.Exit(1)
 	}
 
-	// add xo
-	err = args.ExecuteTemplate(internal.XOTemplate, "xo_db", "", args)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "error: %v\n", err)
-		os.Exit(1)
-	}
+//	// add xo
+//	err = args.ExecuteTemplate(internal.XOTemplate, "xo_db", "", args)
+//	if err != nil {
+//		fmt.Fprintf(os.Stderr, "error: %v\n", err)
+//		os.Exit(1)
+//	}
 
 	// output
 	err = writeTypes(args)

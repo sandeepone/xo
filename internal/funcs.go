@@ -5,6 +5,7 @@ import (
 	"strings"
 	"text/template"
 
+	"github.com/gedex/inflector"
 	"github.com/knq/snaker"
 	"github.com/sandeepone/xo/models"
 )
@@ -24,6 +25,7 @@ func (a *ArgType) NewTemplateFuncs() template.FuncMap {
 		"reniltype":      a.reniltype,
 		"retype":         a.retype,
 		"shortname":      a.shortname,
+		"pluralname":     a.pluralname,
 		"convext":        a.convext,
 		"schema":         a.schemafn,
 		"colname":        a.colname,
@@ -159,6 +161,10 @@ func (a *ArgType) shortname(typ string, scopeConflicts ...interface{}) string {
 	}
 
 	return v
+}
+
+func (a *ArgType) pluralname(str string) string {
+	return inflector.Pluralize(str)
 }
 
 // colnames creates a list of the column names found in fields, excluding any
