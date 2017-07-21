@@ -31,6 +31,7 @@ func (a *ArgType) NewTemplateFuncs() template.FuncMap {
 		"colname":        a.colname,
 		"hascolumn":      a.hascolumn,
 		"hasfield":       a.hasfield,
+		"replace":        strings.Replace,
 	}
 }
 
