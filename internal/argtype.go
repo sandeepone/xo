@@ -150,6 +150,9 @@ type ArgType struct {
 	// ShortNameTypeMap is the collection of Go style short names for types, mainly
 	// used for use with declaring a func receiver on a type.
 	ShortNameTypeMap map[string]string `arg:"-"`
+
+	// IgnoreIndexField is the field to use the user supplied to skip in index function name
+	IgnoreIndexField string `arg:"--ignore-index-field,help:user supplied index field to ignore in index function name"`
 }
 
 // NewDefaultArgs returns the default arguments.

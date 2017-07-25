@@ -173,7 +173,17 @@ func (a *ArgType) BuildIndexFuncName(ixTpl *Index) {
 		paramNames = append(paramNames, ixName)
 	} else {
 		for _, f := range ixTpl.Fields {
-			paramNames = append(paramNames, f.Name)
+			if a.IgnoreIndexField != "" {
+				if len(ixTpl.Fields) > 1 && f.Name != a.IgnoreIndexField {
+					paramNames = append(paramNames, f.Name)
+				}
+
+				if len(ixTpl.Fields) < 2 && f.Name == a.IgnoreIndexField {
+					paramNames = append(paramNames, f.Name)
+				}
+			} else {
+				paramNames = append(paramNames, f.Name)
+			}
 		}
 	}
 
