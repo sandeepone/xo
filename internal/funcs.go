@@ -32,6 +32,7 @@ func (a *ArgType) NewTemplateFuncs() template.FuncMap {
 		"hascolumn":      a.hascolumn,
 		"hasfield":       a.hasfield,
 		"replace":        strings.Replace,
+		"getstartcount":  a.getstartcount,
 	}
 }
 
@@ -591,4 +592,9 @@ func (a *ArgType) hasfield(fields []*Field, name string) bool {
 	}
 
 	return false
+}
+
+// getstartcount returns a starting count for numbering columsn in queries
+func (a *ArgType) getstartcount(fields []*Field, pkFields []*Field) int {
+	return len(fields) - len(pkFields)
 }

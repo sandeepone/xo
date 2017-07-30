@@ -178,7 +178,7 @@ func (a *ArgType) BuildIndexFuncName(ixTpl *Index) {
 					paramNames = append(paramNames, f.Name)
 				}
 
-				if len(ixTpl.Fields) < 2 && f.Name == a.IgnoreIndexField {
+				if len(ixTpl.Fields) < 2 {
 					paramNames = append(paramNames, f.Name)
 				}
 			} else {
