@@ -15,6 +15,9 @@ const (
 	QueryTypeTemplate
 	QueryTemplate
 
+  GraphQLTypeTemplate
+	GraphQLQueryTemplate
+
 	// always last
 	XOTemplate
 )
@@ -39,6 +42,10 @@ func (tt TemplateType) String() string {
 		s = "querytype"
 	case QueryTemplate:
 		s = "query"
+	case GraphQLTypeTemplate:
+		s = "graphql.type"
+	case GraphQLQueryTemplate:
+		s = "graphql.query"
 	default:
 		panic("unknown TemplateType")
 	}

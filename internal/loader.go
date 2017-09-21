@@ -493,6 +493,18 @@ func (tl TypeLoader) LoadRelkind(args *ArgType, relType RelType) (map[string]*Ty
 		if err != nil {
 			return nil, err
 		}
+
+		// generate graphql type template
+		err = args.ExecuteTemplate(GraphQLTypeTemplate, "types/"+t.Name, "", t)
+		if err != nil {
+			return nil, err
+		}
+
+	  // generate graphql query template
+		// err = args.ExecuteTemplate(GraphQLQueryTemplate, "query/"+t.Name, "", t))
+		// if err != nil {
+		// 	return nil, err
+		// }
 	}
 
 	return tableMap, nil

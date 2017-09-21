@@ -33,6 +33,7 @@ func (a *ArgType) NewTemplateFuncs() template.FuncMap {
 		"hasfield":       a.hasfield,
 		"replace":        strings.Replace,
 		"getstartcount":  a.getstartcount,
+		"gqltype":        a.convertGQLType,
 	}
 }
 
@@ -286,7 +287,7 @@ func (a *ArgType) colnameswhere(fields []*Field, ignoreNames ...string) map[stri
 		if r, ok := goReservedNames[strings.ToLower(s)]; ok {
 			s = r
 		}
-		
+
 		vals[a.colname(f.Col)] = s
 		//str := "" + a.colname(f.Col) + " = " + a.Loader.NthParam(i) + ", " + s
 
@@ -403,6 +404,52 @@ func (a *ArgType) colcount(fields []*Field, ignoreNames ...string) int {
 		i++
 	}
 	return i
+}
+
+// convertType converts the db col type to the corresponding graphql type
+func (a *ArgType) convertGQLType(typ string) string {
+	switch typ {
+	// Dates represented as strings
+case "time", "date", "datetime", "dbr.NullTime":
+		fallthrough
+
+	// Buffers represented as strings
+	case "bit", "blob", "tinyblob", "longblob", "mediumblob", "binary", "varbinary":
+		fallthrough
+
+	// Numbers that may exceed float precision, repesent as string
+	case "bigint", "decimal", "numeric", "geometry", "bigserial":
+		fallthrough
+
+	// Network addresses represented as strings
+	case "cidr", "inet", "macaddr":
+		fallthrough
+
+	// Strings
+case "set", "char", "text", "uuid", "varchar", "nvarchar", "tinytext", "longtext", "character", "mediumtext", "dbr.NullString":
+		return "String"
+	// Integers
+case "int", "year", "serial", "integer", "tinyint", "smallint", "mediumint", "timestamp", "dbr.NullInt64":
+		return "Int"
+	// Floats
+case "real", "float", "double", "double precision", "dbr.NullFloat64":
+		return "Float"
+
+	// Booleans
+case "boolean", "dbr.NullBool", "bool":
+		return "Boolean"
+
+	// Enum special case
+	case "enum":
+		return "String"
+
+	// JSON represented as strings
+  case "json", "JSON":
+  	return "String"
+
+	default:
+		return "String"
+	}
 }
 
 // goReservedNames is a map of of go reserved names to "safe" names.
