@@ -248,7 +248,15 @@ func getFile(args *internal.ArgType, t *internal.TBuf) (*os.File, error) {
 	if args.SingleFile {
 		filename = args.Filename
 	}
-	filename = path.Join(args.Path, filename)
+
+	if path.Dir(filename) == "types" {
+		args.Package = path.Dir(filename)
+	} else if path.Dir(filename) == "queries" {
+		args.Package = path.Dir(filename)
+	} else {
+		args.Package = path.Base(args.Path)
+	  filename = path.Join(args.Path, filename)
+  }
 
 	// lookup file
 	f, ok := files[filename]

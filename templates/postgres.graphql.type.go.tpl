@@ -2,6 +2,7 @@
 {{- $table := (schema .Schema .Table.TableName) -}}
 {{- $stable := (.Table.TableName) -}}
 
+// {{ .Name }}Type is the GraphQL schema for the {{ .Name }} type.
 var {{ .Name }}Type = graphql.NewObject(graphql.ObjectConfig{
 			Name: "{{ .Name }}",
 			{{- if .Comment }}
