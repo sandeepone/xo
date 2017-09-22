@@ -120,6 +120,10 @@ func processArgs(args *internal.ArgType) error {
 			args.Path = path.Dir(args.Out)
 			args.Filename = path.Base(args.Out)
 
+			if err := prepare(args.Path); err != nil {
+				return err
+			}
+
 			// error if not split was set, but destination is not a directory
 			if !args.SingleFile {
 				return errors.New("output path is not directory")
@@ -128,6 +132,10 @@ func processArgs(args *internal.ArgType) error {
 			// path error (ie, file doesn't exist yet)
 			args.Path = path.Dir(args.Out)
 			args.Filename = path.Base(args.Out)
+
+			if err := prepare(args.Path); err != nil {
+				return err
+			}
 
 			// error if split was set, but dest doesn't exist
 			if !args.SingleFile {
@@ -244,19 +252,31 @@ func getFile(args *internal.ArgType, t *internal.TBuf) (*os.File, error) {
 	var err error
 
 	// determine filename
-	var filename = strings.ToLower(t.Name) + args.Suffix
+	var filename = strings.ToLower(t.Name)
+	var bundle = path.Base(filename) + "Bundle"
+
 	if args.SingleFile {
 		filename = args.Filename
 	}
 
 	if path.Dir(filename) == "types" {
+		filename = filename + ".go"
 		args.Package = path.Dir(filename)
-	} else if path.Dir(filename) == "queries" {
-		args.Package = path.Dir(filename)
+	} else if path.Dir(filename) == "query" {
+		filename = "bundles/" + bundle + "/query.go"
+		args.Package = bundle
+	} else if path.Dir(filename) == "mutation" {
+		filename = "bundles/" + bundle + "/mutation.go"
+		args.Package = bundle
 	} else {
 		args.Package = path.Base(args.Path)
-	  filename = path.Join(args.Path, filename)
+	  filename = path.Join(args.Path, filename) + args.Suffix
   }
+
+	dest := path.Dir(filename)
+	if err := prepare(dest); err != nil {
+		return nil, err
+	}
 
 	// lookup file
 	f, ok := files[filename]
@@ -365,4 +385,16 @@ func writeTypes(args *internal.ArgType) error {
 
 	// process written files with goimports
 	return exec.Command("goimports", params...).Run()
+}
+
+func fileExist(path string) bool {
+	_, err := os.Stat(path)
+	return err == nil || os.IsExist(err)
+}
+
+func prepare(dir string) error {
+	if fileExist(dir) {
+		return nil
+	}
+	return os.MkdirAll(dir, os.ModePerm)
 }

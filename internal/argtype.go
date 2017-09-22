@@ -152,7 +152,10 @@ type ArgType struct {
 	ShortNameTypeMap map[string]string `arg:"-"`
 
 	// IgnoreIndexField is the field to use the user supplied to skip in index function name
-	IgnoreIndexField string `arg:"--ignore-index-field,help:user supplied index field to ignore in index function name"`
+	IgnoreIndexField string `arg:"--ignore-index-field,help:User supplied index field to ignore in index function name"`
+
+	// GraphQL enables the graphql support.
+	GraphQL bool `arg:"-g,--graphql,help:GraphQL enables the graphql support"`
 }
 
 // NewDefaultArgs returns the default arguments.
@@ -166,6 +169,7 @@ func NewDefaultArgs() *ArgType {
 		ForeignKeyMode:      &fkMode,
 		QueryParamDelimiter: "%%",
 		NameConflictSuffix:  "Val",
+		GraphQL: 						 true,
 
 		// KnownTypeMap is the collection of known Go types.
 		KnownTypeMap: map[string]bool{

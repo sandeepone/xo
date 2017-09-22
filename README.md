@@ -156,6 +156,9 @@ options:
                          suffix to append when a name conflicts with a Go variable [default: Val]
   --template-path TEMPLATE-PATH
                          user supplied template path
+  --ignore-index-field IGNORE-INDEX-FIELD
+                         User supplied index field to ignore in index function name
+  --graphql, -g          GraphQL enables the graphql support [default: true]
   --help, -h             display this help and exit
 ```
 
@@ -242,17 +245,20 @@ available `$TYPE`s), and are defined in [`internal/types.go`](internal/types.go)
 Each database, `$DBNAME`, has its own set of templates for `$TYPE` and are
 available in the [templates/](templates/) directory as `templates/$DBNAME.$TYPE.go.tpl`:
 
-| Template File                         | `$TYPE`      | Description                                           |
-|---------------------------------------|--------------|-------------------------------------------------------|
-| `templates/$DBNAME.type.go.tpl`       | `Type`       | Template for schema tables/views/queries              |
-| `templates/$DBNAME.enum.go.tpl`       | `Enum`       | Template for schema enum definitions                  |
-| `templates/$DBNAME.proc.go.tpl`       | `Proc`       | Template for stored procedures/functions ("routines") |
-| `templates/$DBNAME.foreignkey.go.tpl` | `ForeignKey` | Template for foreign keys relationships               |
-| `templates/$DBNAME.index.go.tpl`      | `Index`      | Template for schema indexes                           |
-| `templates/$DBNAME.querytype.go.tpl`  | `QueryType`  | Template for a custom query's generated type          |
-| `templates/$DBNAME.query.go.tpl`      | `Query`      | Template for custom query execution                   |
-| `templates/xo_db.go.tpl`              | `ArgType`    | Package level template generated once per package     |
-| `templates/xo_package.go.tpl`         | `ArgType`    | File header template generated once per file          |
+| Template File                               | `$TYPE`      | Description                                           |
+|---------------------------------------------|--------------|-------------------------------------------------------|
+| `templates/$DBNAME.type.go.tpl`             | `Type`       | Template for schema tables/views/queries              |
+| `templates/$DBNAME.enum.go.tpl`             | `Enum`       | Template for schema enum definitions                  |
+| `templates/$DBNAME.proc.go.tpl`             | `Proc`       | Template for stored procedures/functions ("routines") |
+| `templates/$DBNAME.foreignkey.go.tpl`       | `ForeignKey` | Template for foreign keys relationships               |
+| `templates/$DBNAME.index.go.tpl`            | `Index`      | Template for schema indexes                           |
+| `templates/$DBNAME.querytype.go.tpl`        | `QueryType`  | Template for a custom query s generated type          |
+| `templates/$DBNAME.query.go.tpl`            | `Query`      | Template for custom query execution                   |
+| `templates/$DBNAME.graphql.type.go.tpl`     | `Type`       | Template for GraphQL types generated type             |
+| `templates/$DBNAME.graphql.query.go.tpl`    | `Query`      | Template for GraphQL query s generated type           |
+| `templates/$DBNAME.graphql.mutation.go.tpl` | `Mutation`   | Template for a GraphQL mutations generated type       |
+| `templates/xo_db.go.tpl`                    | `ArgType`    | Package level template generated once per package     |
+| `templates/xo_package.go.tpl`               | `ArgType`    | File header template generated once per file          |
 
 For example, PostgreSQL has [`templates/postgres.foreignkey.go.tpl`](templates/postgres.foreignkey.go.tpl)
 which defines the template used by `xo` for PostgreSQL's foreign keys. This
