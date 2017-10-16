@@ -13,7 +13,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/labstack/echo"
 	"github.com/mailru/dbr"
+	"github.com/labstack/echo"
 	"github.com/graphql-go/graphql"
+	"github.com/graphql-go/relay"
+	"github.com/nicksrandall/dataloader"
 )

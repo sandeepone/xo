@@ -1,0 +1,1 @@
+postgres.graphql.loader.go.tpl

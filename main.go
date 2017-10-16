@@ -259,15 +259,24 @@ func getFile(args *internal.ArgType, t *internal.TBuf) (*os.File, error) {
 		filename = args.Filename
 	}
 
-	if path.Dir(filename) == "types" {
-		filename = filename + ".go"
-		args.Package = path.Dir(filename)
-	} else if path.Dir(filename) == "query" {
+	if t.TemplateType.String() == "graphql.type" {
+		filename = "types/"+ filename + ".go"
+		args.Package = "types"
+	} else if t.TemplateType.String() == "graphql.query" {
 		filename = "bundles/" + bundle + "/query.go"
 		args.Package = bundle
-	} else if path.Dir(filename) == "mutation" {
+	} else if t.TemplateType.String() == "graphql.mutation" {
 		filename = "bundles/" + bundle + "/mutation.go"
 		args.Package = bundle
+	} else if t.TemplateType.String() == "graphql.foreignkey" {
+			filename = "types/relations/"+ filename + ".go"
+			args.Package = "relations"
+  } else if t.TemplateType.String() == "graphql.loader" {
+		filename = "loaders/"+ filename + ".go"
+		args.Package = "loaders"
+	} else if t.TemplateType.String() == "graphql.resolver" {
+			filename = "resolvers/"+ filename + ".go"
+			args.Package = "resolvers"
 	} else {
 		args.Package = path.Base(args.Path)
 	  filename = path.Join(args.Path, filename) + args.Suffix

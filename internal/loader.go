@@ -497,19 +497,31 @@ func (tl TypeLoader) LoadRelkind(args *ArgType, relType RelType) (map[string]*Ty
 		// GraphQl Support
 		if args.GraphQL {
 			// generate graphql type template
-			err = args.ExecuteTemplate(GraphQLTypeTemplate, "types/"+t.Name, "", t)
+			err = args.ExecuteTemplate(GraphQLTypeTemplate, t.Name, "", t)
 			if err != nil {
 				return nil, err
 			}
 
 		  // generate graphql query template
-			err = args.ExecuteTemplate(GraphQLQueryTemplate, "query/"+t.Name, "", t)
+			err = args.ExecuteTemplate(GraphQLQueryTemplate, t.Name, "", t)
 			if err != nil {
 				return nil, err
 			}
 
 			// generate graphql mutation template
-			err = args.ExecuteTemplate(GraphQLQueryTemplate, "mutation/"+t.Name, "", t)
+			err = args.ExecuteTemplate(GraphQLMutationTemplate, t.Name, "", t)
+			if err != nil {
+				return nil, err
+			}
+
+			// generate graphql loader template
+			err = args.ExecuteTemplate(GraphQLLoaderTemplate, t.Name, "", t)
+			if err != nil {
+				return nil, err
+			}
+
+			// generate graphql resolver template
+			err = args.ExecuteTemplate(GraphQLResolverTemplate, t.Name, "", t)
 			if err != nil {
 				return nil, err
 			}
@@ -601,6 +613,13 @@ func (tl TypeLoader) LoadForeignKeys(args *ArgType, tableMap map[string]*Type) (
 		err = args.ExecuteTemplate(ForeignKeyTemplate, fk.Type.Name, fk.ForeignKey.ForeignKeyName, fk)
 		if err != nil {
 			return nil, err
+		}
+
+		if args.GraphQL {
+			err = args.ExecuteTemplate(GraphQLForeignKeyTemplate, fk.Type.Name, fk.ForeignKey.ForeignKeyName, fk)
+			if err != nil {
+				return nil, err
+			}
 		}
 	}
 

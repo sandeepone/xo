@@ -1,0 +1,1 @@
+postgres.graphql.mutation.go.tpl
