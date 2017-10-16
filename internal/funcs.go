@@ -13,27 +13,31 @@ import (
 // NewTemplateFuncs returns a set of template funcs bound to the supplied args.
 func (a *ArgType) NewTemplateFuncs() template.FuncMap {
 	return template.FuncMap{
-		"colcount":       a.colcount,
-		"colnames":       a.colnames,
-		"colnamesdb":     a.colnamesdb,
-		"colnamesquery":  a.colnamesquery,
-		"colnameswhere":  a.colnameswhere,
-		"colprefixnames": a.colprefixnames,
-		"colvals":        a.colvals,
-		"fieldnames":     a.fieldnames,
-		"goparamlist":    a.goparamlist,
-		"reniltype":      a.reniltype,
-		"retype":         a.retype,
-		"shortname":      a.shortname,
-		"pluralname":     a.pluralname,
-		"convext":        a.convext,
-		"schema":         a.schemafn,
-		"colname":        a.colname,
-		"hascolumn":      a.hascolumn,
-		"hasfield":       a.hasfield,
-		"replace":        strings.Replace,
-		"getstartcount":  a.getstartcount,
-		"gqltype":        a.convertGQLType,
+		"colcount":       		a.colcount,
+		"colnames":       		a.colnames,
+		"colnamesmulti":  		a.colnamesmulti,
+		"colnamesdb":     		a.colnamesdb,
+		"colnamesquery":  		a.colnamesquery,
+		"colnamesquerymulti": a.colnamesquerymulti,
+		"colnameswhere":  		a.colnameswhere,
+		"colprefixnames": 		a.colprefixnames,
+		"colvals":        		a.colvals,
+		"colvalsmulti":       a.colvalsmulti,
+		"fieldnames":     		a.fieldnames,
+		"fieldnamesmulti":    a.fieldnamesmulti,
+		"goparamlist":    		a.goparamlist,
+		"reniltype":      		a.reniltype,
+		"retype":         		a.retype,
+		"shortname":      		a.shortname,
+		"pluralname":     		a.pluralname,
+		"convext":        		a.convext,
+		"schema":         		a.schemafn,
+		"colname":        		a.colname,
+		"hascolumn":      		a.hascolumn,
+		"hasfield":       		a.hasfield,
+		"replace":        		strings.Replace,
+		"getstartcount":  		a.getstartcount,
+		"gqltype":        		a.convertGQLType,
 	}
 }
 
@@ -199,6 +203,35 @@ func (a *ArgType) colnames(fields []*Field, ignoreNames ...string) string {
 	return str
 }
 
+// colnamesmulti creates a list of the column names found in fields, excluding any
+// Field with Name contained in ignoreNames.
+//
+// Used to present a comma separated list of column names, that can be used in
+// a SELECT, or UPDATE, or other SQL clause requiring an list of identifiers
+// (ie, "field_1, field_2, field_3, ...").
+func (a *ArgType) colnamesmulti(fields []*Field, ignoreNames []*Field) string {
+	ignore := map[string]bool{}
+	for _, f := range ignoreNames {
+		ignore[f.Name] = true
+	}
+
+	str := ""
+	i := 0
+	for _, f := range fields {
+		if ignore[f.Name] {
+			continue
+		}
+
+		if i != 0 {
+			str = str + ", "
+		}
+		str = str + a.colname(f.Col)
+		i++
+	}
+
+	return str
+}
+
 // colnamesdb creates a list of the column names found in fields, excluding any
 // Field with Name contained in ignoreNames.
 //
@@ -249,6 +282,35 @@ func (a *ArgType) colnamesquery(fields []*Field, sep string, ignoreNames ...stri
 		}
 
 		if i != 0 {
+			str = str + sep
+		}
+		str = str + a.colname(f.Col) + " = " + a.Loader.NthParam(i)
+		i++
+	}
+
+	return str
+}
+
+// colnamesquerymulti creates a list of the column names in fields as a query and
+// joined by sep, excluding any Field with Name contained in the slice of fields in ignoreNames.
+//
+// Used to create a list of column names in a WHERE clause (ie, "field_1 = $1
+// AND field_2 = $2 AND ...") or in an UPDATE clause (ie, "field = $1, field =
+// $2, ...").
+func (a *ArgType) colnamesquerymulti(fields []*Field, sep string, startCount int, ignoreNames []*Field) string {
+	ignore := map[string]bool{}
+	for _, f := range ignoreNames {
+		ignore[f.Name] = true
+	}
+
+	str := ""
+	i := startCount
+	for _, f := range fields {
+		if ignore[f.Name] {
+			continue
+		}
+
+		if i > startCount {
 			str = str + sep
 		}
 		str = str + a.colname(f.Col) + " = " + a.Loader.NthParam(i)
@@ -356,6 +418,34 @@ func (a *ArgType) colvals(fields []*Field, ignoreNames ...string) string {
 	return str
 }
 
+// colvalsmulti creates a list of value place holders for fields excluding any Field
+// with Name contained in ignoreNames.
+//
+// Used to present a comma separated list of column place holders, used in a
+// SELECT or UPDATE statement (ie, "$1, $2, $3 ...").
+func (a *ArgType) colvalsmulti(fields []*Field, ignoreNames []*Field) string {
+	ignore := map[string]bool{}
+	for _, f := range ignoreNames {
+		ignore[f.Name] = true
+	}
+
+	str := ""
+	i := 0
+	for _, f := range fields {
+		if ignore[f.Name] {
+			continue
+		}
+
+		if i != 0 {
+			str = str + ", "
+		}
+		str = str + a.Loader.NthParam(i)
+		i++
+	}
+
+	return str
+}
+
 // fieldnames creates a list of field names from fields of the adding the
 // provided prefix, and excluding any Field with Name contained in ignoreNames.
 //
@@ -365,6 +455,34 @@ func (a *ArgType) fieldnames(fields []*Field, prefix string, ignoreNames ...stri
 	ignore := map[string]bool{}
 	for _, n := range ignoreNames {
 		ignore[n] = true
+	}
+
+	str := ""
+	i := 0
+	for _, f := range fields {
+		if ignore[f.Name] {
+			continue
+		}
+
+		if i != 0 {
+			str = str + ", "
+		}
+		str = str + prefix + "." + f.Name
+		i++
+	}
+
+	return str
+}
+
+// fieldnamesmulti creates a list of field names from fields of the adding the
+// provided prefix, and excluding any Field with the slice contained in ignoreNames.
+//
+// Used to present a comma separated list of field names, ie in a Go statement
+// (ie, "t.Field1, t.Field2, t.Field3 ...")
+func (a *ArgType) fieldnamesmulti(fields []*Field, prefix string, ignoreNames []*Field) string {
+	ignore := map[string]bool{}
+	for _, f := range ignoreNames {
+		ignore[f.Name] = true
 	}
 
 	str := ""
