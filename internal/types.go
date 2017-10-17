@@ -15,6 +15,7 @@ const (
 	QueryTypeTemplate
 	QueryTemplate
 
+  GraphQLBundleTemplate
   GraphQLTypeTemplate
 	GraphQLForeignKeyTemplate
 	GraphQLQueryTemplate
@@ -46,6 +47,8 @@ func (tt TemplateType) String() string {
 		s = "querytype"
 	case QueryTemplate:
 		s = "query"
+	case GraphQLBundleTemplate:
+		s = "graphql.bundle"
 	case GraphQLTypeTemplate:
 		s = "graphql.type"
 	case GraphQLForeignKeyTemplate:

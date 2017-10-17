@@ -1,0 +1,1 @@
+postgres.graphql.bundle.go.tpl

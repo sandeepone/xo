@@ -262,6 +262,9 @@ func getFile(args *internal.ArgType, t *internal.TBuf) (*os.File, error) {
 	if t.TemplateType.String() == "graphql.type" {
 		filename = "types/"+ filename + ".go"
 		args.Package = "types"
+	} else if t.TemplateType.String() == "graphql.bundle" {
+			filename = "bundles/" + bundle + "/bundle.go"
+			args.Package = bundle
 	} else if t.TemplateType.String() == "graphql.query" {
 		filename = "bundles/" + bundle + "/query.go"
 		args.Package = bundle

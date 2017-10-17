@@ -496,6 +496,12 @@ func (tl TypeLoader) LoadRelkind(args *ArgType, relType RelType) (map[string]*Ty
 
 		// GraphQl Support
 		if args.GraphQL {
+			// generate graphql bundle template
+			err = args.ExecuteTemplate(GraphQLBundleTemplate, t.Name, "", t)
+			if err != nil {
+				return nil, err
+			}
+
 			// generate graphql type template
 			err = args.ExecuteTemplate(GraphQLTypeTemplate, t.Name, "", t)
 			if err != nil {
