@@ -20,8 +20,8 @@ import (
 	"github.com/sandeepone/xo/internal"
 	"github.com/sandeepone/xo/models"
 
-	_ "github.com/sandeepone/xo/loaders"
 	_ "github.com/knq/xoutil"
+	_ "github.com/sandeepone/xo/loaders"
 )
 
 func main() {
@@ -81,12 +81,12 @@ func main() {
 		os.Exit(1)
 	}
 
-//	// add xo
-//	err = args.ExecuteTemplate(internal.XOTemplate, "xo_db", "", args)
-//	if err != nil {
-//		fmt.Fprintf(os.Stderr, "error: %v\n", err)
-//		os.Exit(1)
-//	}
+	//	// add xo
+	//	err = args.ExecuteTemplate(internal.XOTemplate, "xo_db", "", args)
+	//	if err != nil {
+	//		fmt.Fprintf(os.Stderr, "error: %v\n", err)
+	//		os.Exit(1)
+	//	}
 
 	// output
 	err = writeTypes(args)
@@ -260,11 +260,11 @@ func getFile(args *internal.ArgType, t *internal.TBuf) (*os.File, error) {
 	}
 
 	if t.TemplateType.String() == "graphql.type" {
-		filename = "types/"+ filename + ".go"
+		filename = "types/" + filename + ".go"
 		args.Package = "types"
 	} else if t.TemplateType.String() == "graphql.bundle" {
-			filename = "bundles/" + bundle + "/bundle.go"
-			args.Package = bundle
+		filename = "bundles/" + bundle + "/bundle.go"
+		args.Package = bundle
 	} else if t.TemplateType.String() == "graphql.query" {
 		filename = "bundles/" + bundle + "/query.go"
 		args.Package = bundle
@@ -272,18 +272,18 @@ func getFile(args *internal.ArgType, t *internal.TBuf) (*os.File, error) {
 		filename = "bundles/" + bundle + "/mutation.go"
 		args.Package = bundle
 	} else if t.TemplateType.String() == "graphql.foreignkey" {
-			filename = "types/relations/"+ filename + ".go"
-			args.Package = "relations"
-  } else if t.TemplateType.String() == "graphql.loader" {
-		filename = "loaders/"+ filename + ".go"
+		filename = "types/relations/" + filename + ".go"
+		args.Package = "relations"
+	} else if t.TemplateType.String() == "graphql.loader" {
+		filename = "loaders/" + filename + ".go"
 		args.Package = "loaders"
 	} else if t.TemplateType.String() == "graphql.resolver" {
-			filename = "resolvers/"+ filename + ".go"
-			args.Package = "resolvers"
+		filename = "resolvers/" + filename + ".go"
+		args.Package = "resolvers"
 	} else {
 		args.Package = path.Base(args.Path)
-	  filename = path.Join(args.Path, filename) + args.Suffix
-  }
+		filename = path.Join(args.Path, filename) + args.Suffix
+	}
 
 	dest := path.Dir(filename)
 	if err := prepare(dest); err != nil {

@@ -13,43 +13,43 @@ import (
 // NewTemplateFuncs returns a set of template funcs bound to the supplied args.
 func (a *ArgType) NewTemplateFuncs() template.FuncMap {
 	return template.FuncMap{
-		"colcount":       		a.colcount,
-		"colnames":       		a.colnames,
-		"colnamesmulti":  		a.colnamesmulti,
-		"colnamesdb":     		a.colnamesdb,
-		"colnamesquery":  		a.colnamesquery,
-		"colnamesquerymulti":	a.colnamesquerymulti,
-		"colnameswhere":			a.colnameswhere,
-		"colprefixnames":			a.colprefixnames,
-		"colvals":        		a.colvals,
+		"colcount":           a.colcount,
+		"colnames":           a.colnames,
+		"colnamesmulti":      a.colnamesmulti,
+		"colnamesdb":         a.colnamesdb,
+		"colnamesquery":      a.colnamesquery,
+		"colnamesquerymulti": a.colnamesquerymulti,
+		"colnameswhere":      a.colnameswhere,
+		"colprefixnames":     a.colprefixnames,
+		"colvals":            a.colvals,
 		"colvalsmulti":       a.colvalsmulti,
-		"fieldnames":     		a.fieldnames,
+		"fieldnames":         a.fieldnames,
 		"fieldnamesmulti":    a.fieldnamesmulti,
-		"goparamlist":    		a.goparamlist,
-		"reniltype":      		a.reniltype,
-		"retype":         		a.retype,
-		"shortname":      		a.shortname,
-		"pluralname":     		a.pluralname,
-		"convext":        		a.convext,
-		"schema":         		a.schemafn,
-		"colname":        		a.colname,
-		"hascolumn":      		a.hascolumn,
-		"hasfield":       		a.hasfield,
-		"replace":        		strings.Replace,
-		"getstartcount":  		a.getstartcount,
-		"gqltype":        		a.convertGQLType,
-		"pluralize":     			a.pluralname,
-		"singularize":     		a.singularize,
-		"toTitle": 						strings.Title,
-		"toUpper":     				strings.ToUpper,
-		"toLower":     				strings.ToLower,
-		"stringReplace":			strings.Replace,
-		"stringSplit":				strings.Split,
-		"stringContains":			strings.Contains,
-		"stringCount":				strings.Count,
-		"stringIndex":				strings.Index,
-		"hasPrefix":					strings.HasPrefix,
-		"hasSuffix":					strings.HasSuffix,
+		"goparamlist":        a.goparamlist,
+		"reniltype":          a.reniltype,
+		"retype":             a.retype,
+		"shortname":          a.shortname,
+		"pluralname":         a.pluralname,
+		"convext":            a.convext,
+		"schema":             a.schemafn,
+		"colname":            a.colname,
+		"hascolumn":          a.hascolumn,
+		"hasfield":           a.hasfield,
+		"replace":            strings.Replace,
+		"getstartcount":      a.getstartcount,
+		"gqltype":            a.convertGQLType,
+		"pluralize":          a.pluralname,
+		"singularize":        a.singularize,
+		"toTitle":            strings.Title,
+		"toUpper":            strings.ToUpper,
+		"toLower":            strings.ToLower,
+		"stringReplace":      strings.Replace,
+		"stringSplit":        strings.Split,
+		"stringContains":     strings.Contains,
+		"stringCount":        strings.Count,
+		"stringIndex":        strings.Index,
+		"hasPrefix":          strings.HasPrefix,
+		"hasSuffix":          strings.HasSuffix,
 	}
 }
 
@@ -544,7 +544,7 @@ func (a *ArgType) colcount(fields []*Field, ignoreNames ...string) int {
 func (a *ArgType) convertGQLType(typ string) string {
 	switch typ {
 	// Dates represented as strings
-case "time", "date", "datetime", "dbr.NullTime":
+	case "time", "date", "datetime", "dbr.NullTime":
 		fallthrough
 
 	// Buffers represented as strings
@@ -559,27 +559,27 @@ case "time", "date", "datetime", "dbr.NullTime":
 	case "cidr", "inet", "macaddr":
 		fallthrough
 
-	// Strings
-case "set", "char", "text", "uuid", "varchar", "nvarchar", "tinytext", "longtext", "character", "mediumtext", "dbr.NullString":
+		// Strings
+	case "set", "char", "text", "uuid", "varchar", "nvarchar", "tinytext", "longtext", "character", "mediumtext", "dbr.NullString":
 		return "String"
-	// Integers
-case "int", "year", "serial", "integer", "tinyint", "smallint", "mediumint", "timestamp", "dbr.NullInt64":
+		// Integers
+	case "int", "year", "serial", "integer", "tinyint", "smallint", "mediumint", "timestamp", "dbr.NullInt64":
 		return "Int"
-	// Floats
-case "real", "float", "double", "double precision", "dbr.NullFloat64":
+		// Floats
+	case "real", "float", "double", "double precision", "dbr.NullFloat64":
 		return "Float"
 
-	// Booleans
-case "boolean", "dbr.NullBool", "bool":
+		// Booleans
+	case "boolean", "dbr.NullBool", "bool":
 		return "Boolean"
 
 	// Enum special case
 	case "enum":
 		return "String"
 
-	// JSON represented as strings
-  case "json", "JSON":
-  	return "String"
+		// JSON represented as strings
+	case "json", "JSON":
+		return "String"
 
 	default:
 		return "String"

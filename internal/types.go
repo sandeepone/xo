@@ -15,8 +15,8 @@ const (
 	QueryTypeTemplate
 	QueryTemplate
 
-  GraphQLBundleTemplate
-  GraphQLTypeTemplate
+	GraphQLBundleTemplate
+	GraphQLTypeTemplate
 	GraphQLForeignKeyTemplate
 	GraphQLQueryTemplate
 	GraphQLMutationTemplate
@@ -149,6 +149,8 @@ type Type struct {
 	Fields           []*Field
 	Table            *models.Table
 	Comment          string
+	ForeignKeys      map[string]*ForeignKey
+	Indexs           map[string]*Index
 }
 
 // ForeignKey is a template item for a foreign relationship on a table.

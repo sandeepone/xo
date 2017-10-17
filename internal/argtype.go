@@ -169,7 +169,7 @@ func NewDefaultArgs() *ArgType {
 		ForeignKeyMode:      &fkMode,
 		QueryParamDelimiter: "%%",
 		NameConflictSuffix:  "Val",
-		GraphQL: 						 true,
+		GraphQL:             true,
 
 		// KnownTypeMap is the collection of known Go types.
 		KnownTypeMap: map[string]bool{
