@@ -18,9 +18,9 @@ func (a *ArgType) NewTemplateFuncs() template.FuncMap {
 		"colnamesmulti":  		a.colnamesmulti,
 		"colnamesdb":     		a.colnamesdb,
 		"colnamesquery":  		a.colnamesquery,
-		"colnamesquerymulti": a.colnamesquerymulti,
-		"colnameswhere":  		a.colnameswhere,
-		"colprefixnames": 		a.colprefixnames,
+		"colnamesquerymulti":	a.colnamesquerymulti,
+		"colnameswhere":			a.colnameswhere,
+		"colprefixnames":			a.colprefixnames,
 		"colvals":        		a.colvals,
 		"colvalsmulti":       a.colvalsmulti,
 		"fieldnames":     		a.fieldnames,
@@ -38,6 +38,18 @@ func (a *ArgType) NewTemplateFuncs() template.FuncMap {
 		"replace":        		strings.Replace,
 		"getstartcount":  		a.getstartcount,
 		"gqltype":        		a.convertGQLType,
+		"pluralize":     			a.pluralname,
+		"singularize":     		a.singularize,
+		"toTitle": 						strings.Title,
+		"toUpper":     				strings.ToUpper,
+		"toLower":     				strings.ToLower,
+		"stringReplace":			strings.Replace,
+		"stringSplit":				strings.Split,
+		"stringContains":			strings.Contains,
+		"stringCount":				strings.Count,
+		"stringIndex":				strings.Index,
+		"hasPrefix":					strings.HasPrefix,
+		"hasSuffix":					strings.HasSuffix,
 	}
 }
 
@@ -172,6 +184,10 @@ func (a *ArgType) shortname(typ string, scopeConflicts ...interface{}) string {
 
 func (a *ArgType) pluralname(str string) string {
 	return inflector.Pluralize(str)
+}
+
+func (a *ArgType) singularize(str string) string {
+	return inflector.Singularize(str)
 }
 
 // colnames creates a list of the column names found in fields, excluding any
