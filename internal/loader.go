@@ -884,6 +884,11 @@ func (tl TypeLoader) LoadCustomSchema(args *ArgType, relType RelType, fkmap map[
 				return err
 			}
 
+			err = args.ExecuteTemplate(GraphQLForeignKeyTemplate, t.Name, "", t)
+			if err != nil {
+				return err
+			}
+
 			// generate graphql type template
 			err = args.ExecuteTemplate(GraphQLTypeTemplate, t.Name, "", t)
 			if err != nil {
