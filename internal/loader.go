@@ -277,20 +277,20 @@ func (tl TypeLoader) LoadSchema(args *ArgType) error {
 	}
 
 	// load foreign keys
-	fkmap, err := tl.LoadForeignKeys(args, tableMap)
+	_, err = tl.LoadForeignKeys(args, tableMap)
 	if err != nil {
 		return err
 	}
 
 	// load indexes
-	idx, err := tl.LoadIndexes(args, tableMap)
+	_, err = tl.LoadIndexes(args, tableMap)
 	if err != nil {
 		return err
 	}
 
 	// GraphQl Support
 	if args.GraphQL {
-		err := tl.LoadCustomSchema(args, Table, fkmap, idx)
+		err := tl.LoadCustomSchema(args, Table, tableMap)
 		if err != nil {
 			return err
 		}
@@ -841,7 +841,7 @@ func (tl TypeLoader) LoadIndexColumns(args *ArgType, ixTpl *Index) error {
 }
 
 // LoadRelkind loads a schema table/view definition.
-func (tl TypeLoader) LoadCustomSchema(args *ArgType, relType RelType, fkmap map[string]*ForeignKey, ixmap map[string]*Index) error {
+func (tl TypeLoader) LoadCustomSchema(args *ArgType, relType RelType, ctableMap map[string]*Type) error {
 	var err error
 
 	// load tables
@@ -853,6 +853,7 @@ func (tl TypeLoader) LoadCustomSchema(args *ArgType, relType RelType, fkmap map[
 	// tables
 	tableMap := make(map[string]*Type)
 	for _, ti := range tableList {
+
 		// create template
 		typeTpl := &Type{
 			Name:        SingularizeIdentifier(ti.TableName),
@@ -860,9 +861,31 @@ func (tl TypeLoader) LoadCustomSchema(args *ArgType, relType RelType, fkmap map[
 			RelType:     relType,
 			Fields:      []*Field{},
 			Table:       ti,
-			ForeignKeys: fkmap,
-			Indexs:      ixmap,
+			ForeignKeys: nil,
+			Indexs:      nil,
 		}
+
+		// load keys per table
+		fkMap := map[string]*ForeignKey{}
+		err = tl.LoadTableForeignKeys(args, ctableMap, ctableMap[ti.TableName], fkMap)
+		if err != nil {
+			return err
+		}
+
+		// determine foreign key names
+		for i, fk := range fkMap {
+			fkMap[i].Name = args.ForeignKeyName(fkMap, fk)
+		}
+
+		// load table indexes
+		ixMap := map[string]*Index{}
+		err = tl.LoadTableIndexes(args, ctableMap[ti.TableName], ixMap)
+		if err != nil {
+			return err
+		}
+
+		typeTpl.ForeignKeys = append(typeTpl.ForeignKeys, fkMap)
+		typeTpl.Indexs = append(typeTpl.Indexs, ixMap)
 
 		// process columns
 		err = tl.LoadColumns(args, typeTpl)
