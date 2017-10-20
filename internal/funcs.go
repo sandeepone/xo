@@ -543,10 +543,6 @@ func (a *ArgType) colcount(fields []*Field, ignoreNames ...string) int {
 // convertType converts the db col type to the corresponding graphql type
 func (a *ArgType) convertGQLType(typ string) string {
 	switch typ {
-	// Dates represented as strings
-	case "time", "date", "datetime", "dbr.NullTime":
-		fallthrough
-
 	// Buffers represented as strings
 	case "bit", "blob", "tinyblob", "longblob", "mediumblob", "binary", "varbinary":
 		fallthrough
@@ -562,9 +558,11 @@ func (a *ArgType) convertGQLType(typ string) string {
 		// Strings
 	case "set", "char", "text", "uuid", "varchar", "nvarchar", "tinytext", "longtext", "character", "mediumtext", "dbr.NullString":
 		return "String"
+
 		// Integers
 	case "int", "year", "serial", "integer", "tinyint", "smallint", "mediumint", "timestamp", "dbr.NullInt64":
 		return "Int"
+
 		// Floats
 	case "real", "float", "double", "double precision", "dbr.NullFloat64":
 		return "Float"
@@ -572,6 +570,10 @@ func (a *ArgType) convertGQLType(typ string) string {
 		// Booleans
 	case "boolean", "dbr.NullBool", "bool":
 		return "Boolean"
+
+		// Dates represented as strings
+	case "time", "date", "datetime", "dbr.NullTime", "time.Time":
+		return "DateTime"
 
 	// Enum special case
 	case "enum":

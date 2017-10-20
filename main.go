@@ -253,7 +253,7 @@ func getFile(args *internal.ArgType, t *internal.TBuf) (*os.File, error) {
 
 	// determine filename
 	var filename = strings.ToLower(t.Name)
-	var bundle = path.Base(filename) + "Bundle"
+	var bundle = path.Base(filename)
 
 	if args.SingleFile {
 		filename = args.Filename
@@ -263,13 +263,13 @@ func getFile(args *internal.ArgType, t *internal.TBuf) (*os.File, error) {
 		filename = "types/" + filename + ".go"
 		args.Package = "types"
 	} else if t.TemplateType.String() == "graphql.bundle" {
-		filename = "bundles/" + bundle + "/bundle.go"
+		filename = "services/" + bundle + "/service.go"
 		args.Package = bundle
 	} else if t.TemplateType.String() == "graphql.query" {
-		filename = "bundles/" + bundle + "/query.go"
+		filename = "services/" + bundle + "/query.go"
 		args.Package = bundle
 	} else if t.TemplateType.String() == "graphql.mutation" {
-		filename = "bundles/" + bundle + "/mutation.go"
+		filename = "services/" + bundle + "/mutation.go"
 		args.Package = bundle
 	} else if t.TemplateType.String() == "graphql.foreignkey" {
 		filename = "types/relations/" + filename + ".go"
