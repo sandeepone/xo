@@ -8,6 +8,7 @@ import (
 	"github.com/gedex/inflector"
 	"github.com/knq/snaker"
 	"github.com/sandeepone/xo/models"
+	"github.com/huandu/xstrings"
 )
 
 // NewTemplateFuncs returns a set of template funcs bound to the supplied args.
@@ -50,6 +51,18 @@ func (a *ArgType) NewTemplateFuncs() template.FuncMap {
 		"stringIndex":        strings.Index,
 		"hasPrefix":          strings.HasPrefix,
 		"hasSuffix":          strings.HasSuffix,
+		"toCamelCase":        xstrings.ToCamelCase,
+		"toSnakeCase":        xstrings.ToSnakeCase,
+		"toSwapCase":        	xstrings.SwapCase,
+		"ucfirst":        		xstrings.FirstRuneToUpper,
+		"lcfist":        			xstrings.FirstRuneToLower,
+		"toReverse":        	xstrings.Reverse,
+		"toTranslate":        xstrings.Translate,
+		"toDelete":        		xstrings.Delete,
+		"split":        			strings.Split,
+		"trim":        				strings.Trim,
+		"trimPrefix":        	strings.TrimPrefix,
+		"trimSuffix":        	strings.TrimSuffix,
 	}
 }
 

@@ -272,8 +272,8 @@ func getFile(args *internal.ArgType, t *internal.TBuf) (*os.File, error) {
 		filename = "services/" + bundle + "/mutation.go"
 		args.Package = bundle
 	} else if t.TemplateType.String() == "graphql.foreignkey" {
-		filename = "types/relations/" + filename + ".go"
-		args.Package = "relations"
+		filename = "types/edges/" + filename + ".go"
+		args.Package = "edges"
 	} else if t.TemplateType.String() == "graphql.loader" {
 		filename = "loaders/" + filename + ".go"
 		args.Package = "loaders"
