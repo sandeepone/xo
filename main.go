@@ -53,40 +53,60 @@ func main() {
 		os.Exit(1)
 	}
 
-	// open database
-	err = openDB(args)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "error: %v\n", err)
-		os.Exit(1)
-	}
-	defer args.DB.Close()
+	if args.GraphQLSchema == "" {
+		// open database
+		err = openDB(args)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "error: %v\n", err)
+			os.Exit(1)
+		}
+		defer args.DB.Close()
 
-	// load schema name
-	if args.Schema == "" {
-		args.Schema, err = args.Loader.SchemaName(args)
+		// load schema name
+		if args.Schema == "" {
+			args.Schema, err = args.Loader.SchemaName(args)
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "error: %v\n", err)
+				os.Exit(1)
+			}
+		}
+
+		// load defs into type map
+		if args.QueryMode {
+			err = args.Loader.ParseQuery(args)
+		} else {
+			err = args.Loader.LoadSchema(args)
+		}
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "error: %v\n", err)
+			os.Exit(1)
+		}
+
+		//	// add xo
+		//	err = args.ExecuteTemplate(internal.XOTemplate, "xo_db", "", args)
+		//	if err != nil {
+		//		fmt.Fprintf(os.Stderr, "error: %v\n", err)
+		//		os.Exit(1)
+		//	}
+	} else {
+		// save driver type
+		args.LoaderType = "mysql"
+		args.Suffix = "_gen.go"
+
+		// Neelance Graphql Generator
+		schemaBytes, err := ioutil.ReadFile(args.GraphQLSchema)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "error: %v\n", err)
+			os.Exit(1)
+		}
+
+		cg := internal.NewCodeGen(string(schemaBytes))
+		err = cg.Generate(args)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "error: %v\n", err)
 			os.Exit(1)
 		}
 	}
-
-	// load defs into type map
-	if args.QueryMode {
-		err = args.Loader.ParseQuery(args)
-	} else {
-		err = args.Loader.LoadSchema(args)
-	}
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "error: %v\n", err)
-		os.Exit(1)
-	}
-
-	//	// add xo
-	//	err = args.ExecuteTemplate(internal.XOTemplate, "xo_db", "", args)
-	//	if err != nil {
-	//		fmt.Fprintf(os.Stderr, "error: %v\n", err)
-	//		os.Exit(1)
-	//	}
 
 	// output
 	err = writeTypes(args)
@@ -124,10 +144,7 @@ func processArgs(args *internal.ArgType) error {
 				return err
 			}
 
-			// error if not split was set, but destination is not a directory
-			if !args.SingleFile {
-				return errors.New("output path is not directory")
-			}
+			return errors.New("output path is not directory")
 		} else if _, ok := err.(*os.PathError); ok {
 			// path error (ie, file doesn't exist yet)
 			args.Path = path.Dir(args.Out)
@@ -137,10 +154,7 @@ func processArgs(args *internal.ArgType) error {
 				return err
 			}
 
-			// error if split was set, but dest doesn't exist
-			if !args.SingleFile {
-				return errors.New("output path must be a directory and already exist when not writing to a single file")
-			}
+			return errors.New("output path must be a directory and already exist when not writing to a single file")
 		} else {
 			return err
 		}
@@ -255,29 +269,29 @@ func getFile(args *internal.ArgType, t *internal.TBuf) (*os.File, error) {
 	var filename = strings.ToLower(t.Name)
 	var bundle = path.Base(filename)
 
-	if args.SingleFile {
-		filename = args.Filename
-	}
-
 	if t.TemplateType.String() == "graphql.type" {
-		filename = "types/" + filename + ".go"
-		args.Package = "types"
+		filename = filename + "_type"
+		//filename = "types/" + filename + ".go"
+		//args.Package = "types"
+		filename = path.Join(args.Path, filename) + args.Suffix
 	} else if t.TemplateType.String() == "graphql.bundle" {
 		filename = "services/" + bundle + "/service.go"
 		args.Package = bundle
 	} else if t.TemplateType.String() == "graphql.query" {
-		filename = "services/" + bundle + "/query.go"
-		args.Package = bundle
-	} else if t.TemplateType.String() == "graphql.mutation" {
+		filename = filename + "_query"
+		// filename = "services/" + bundle + "/query.go"
+		// args.Package = bundle
+		filename = path.Join(args.Path, filename) + args.Suffix
+	} else if t.TemplateType.String() == "graphql.mutation1111" {
 		filename = "services/" + bundle + "/mutation.go"
 		args.Package = bundle
 	} else if t.TemplateType.String() == "graphql.foreignkey" {
 		filename = "types/edges/" + filename + ".go"
 		args.Package = "edges"
-	} else if t.TemplateType.String() == "graphql.loader" {
+	} else if t.TemplateType.String() == "graphql.loader1111" {
 		filename = "loaders/" + filename + ".go"
 		args.Package = "loaders"
-	} else if t.TemplateType.String() == "graphql.resolver" {
+	} else if t.TemplateType.String() == "graphql.resolver111" {
 		filename = "resolvers/" + filename + ".go"
 		args.Package = "resolvers"
 	} else {
@@ -351,6 +365,11 @@ func writeTypes(args *internal.ArgType) error {
 	// loop, writing in order
 	for _, t := range out {
 		var f *os.File
+
+		// if verbose
+		if args.Verbose {
+			fmt.Printf("Generated : %s \n\n", t.Name)
+		}
 
 		// skip when in append and type is XO
 		if args.Append && t.TemplateType == internal.XOTemplate {

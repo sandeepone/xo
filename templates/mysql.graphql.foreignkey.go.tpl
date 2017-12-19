@@ -1,1 +1,1 @@
-postgres.graphql.foreignkey.go.tpl
+

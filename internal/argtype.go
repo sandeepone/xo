@@ -8,7 +8,7 @@ type ArgType struct {
 	Verbose bool `arg:"-v,help:toggle verbose"`
 
 	// DSN is the database string (ie, pgsql://user@blah:localhost:5432/dbname?args=)
-	DSN string `arg:"positional,required,help:data source name"`
+	DSN string `arg:"positional,help:data source name"`
 
 	// Schema is the name of the schema to query.
 	Schema string `arg:"-s,help:schema name to generate Go types for"`
@@ -16,16 +16,13 @@ type ArgType struct {
 	// Out is the output path. If Out is a file, then that will be used as the
 	// path. If Out is a directory, then the output file will be
 	// Out/<$CWD>.xo.go
-	Out string `arg:"-o,help:output path or file name"`
+	Out string `arg:"-o,help:output path"`
 
 	// Append toggles to append to the existing types.
 	Append bool `arg:"-a,help:append to existing files"`
 
 	// Suffix is the output suffix for filenames.
 	Suffix string `arg:"-f,help:output file suffix"`
-
-	// SingleFile when toggled changes behavior so that output is to one f ile.
-	SingleFile bool `arg:"--single-file,help:toggle single file output"`
 
 	// Package is the name used to generate package headers. If not specified,
 	// the name of the output directory will be used instead.
@@ -156,6 +153,9 @@ type ArgType struct {
 
 	// GraphQL enables the graphql support.
 	GraphQL bool `arg:"-g,--graphql,help:GraphQL enables the graphql support"`
+
+	// GraphQL schema path.
+	GraphQLSchema string `arg:"-S,--gqlschema,help:Path to GraphQL Schema file or directory"`
 }
 
 // NewDefaultArgs returns the default arguments.

@@ -1,14 +1,15 @@
 package internal
 
 import (
+	"fmt"
 	"strconv"
 	"strings"
 	"text/template"
 
 	"github.com/gedex/inflector"
+	"github.com/huandu/xstrings"
 	"github.com/knq/snaker"
 	"github.com/sandeepone/xo/models"
-	"github.com/huandu/xstrings"
 )
 
 // NewTemplateFuncs returns a set of template funcs bound to the supplied args.
@@ -53,16 +54,22 @@ func (a *ArgType) NewTemplateFuncs() template.FuncMap {
 		"hasSuffix":          strings.HasSuffix,
 		"toCamelCase":        xstrings.ToCamelCase,
 		"toSnakeCase":        xstrings.ToSnakeCase,
-		"toSwapCase":        	xstrings.SwapCase,
-		"ucfirst":        		xstrings.FirstRuneToUpper,
-		"lcfist":        			xstrings.FirstRuneToLower,
-		"toReverse":        	xstrings.Reverse,
+		"toSwapCase":         xstrings.SwapCase,
+		"ucfirst":            xstrings.FirstRuneToUpper,
+		"lcfist":             xstrings.FirstRuneToLower,
+		"toReverse":          xstrings.Reverse,
 		"toTranslate":        xstrings.Translate,
-		"toDelete":        		xstrings.Delete,
-		"split":        			strings.Split,
-		"trim":        				strings.Trim,
-		"trimPrefix":        	strings.TrimPrefix,
-		"trimSuffix":        	strings.TrimSuffix,
+		"toDelete":           xstrings.Delete,
+		"split":              strings.Split,
+		"trim":               strings.Trim,
+		"trimPrefix":         strings.TrimPrefix,
+		"trimSuffix":         strings.TrimSuffix,
+		"capitalize":         a.capitalise,
+		"uncapitalize":       a.unCapitalise,
+		"remove_line_breaks": a.removeLineBreaks,
+		"includes_string":    a.includesString,
+		"sprintf":            fmt.Sprintf,
+		"is_entry":           a.isEntryPoint,
 	}
 }
 
@@ -793,4 +800,34 @@ func (a *ArgType) hasfield(fields []*Field, name string) bool {
 // getstartcount returns a starting count for numbering columsn in queries
 func (a *ArgType) getstartcount(fields []*Field, pkFields []*Field) int {
 	return len(fields) - len(pkFields)
+}
+
+func (a *ArgType) removeLineBreaks(str string) string {
+	return strings.Replace(str, "\n", " ", -1)
+}
+
+func (a *ArgType) capitalise(str string) string {
+	if strings.ToLower(str) == "id" {
+		return "ID"
+	}
+
+	return strings.ToUpper(string(str[0])) + str[1:]
+}
+
+func (a *ArgType) unCapitalise(str string) string {
+	return strings.ToLower(string(str[0])) + str[1:]
+}
+
+func (a *ArgType) includesString(strings []string, str string) bool {
+	for _, val := range strings {
+		if val == str {
+			return true
+		}
+	}
+
+	return false
+}
+
+func (a *ArgType) isEntryPoint(str string) bool {
+	return str == "mutation" || str == "query"
 }

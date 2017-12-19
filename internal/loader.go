@@ -290,10 +290,10 @@ func (tl TypeLoader) LoadSchema(args *ArgType) error {
 
 	// GraphQl Support
 	if args.GraphQL {
-		err := tl.LoadCustomSchema(args, Table, tableMap)
-		if err != nil {
-			return err
-		}
+		// err := tl.LoadCustomSchema(args, Table, tableMap)
+		// if err != nil {
+		// 	return err
+		// }
 	}
 
 	return nil
@@ -502,45 +502,6 @@ func (tl TypeLoader) LoadRelkind(args *ArgType, relType RelType) (map[string]*Ty
 			return nil, err
 		}
 
-		// 	// GraphQl Support
-		// 	if args.GraphQL {
-		// 		// generate graphql bundle template
-		// 		err = args.ExecuteTemplate(GraphQLBundleTemplate, t.Name, "", t)
-		// 		if err != nil {
-		// 			return nil, err
-		// 		}
-		//
-		// 		// generate graphql type template
-		// 		err = args.ExecuteTemplate(GraphQLTypeTemplate, t.Name, "", t)
-		// 		if err != nil {
-		// 			return nil, err
-		// 		}
-		//
-		// 	  // generate graphql query template
-		// 		err = args.ExecuteTemplate(GraphQLQueryTemplate, t.Name, "", t)
-		// 		if err != nil {
-		// 			return nil, err
-		// 		}
-		//
-		// 		// generate graphql mutation template
-		// 		err = args.ExecuteTemplate(GraphQLMutationTemplate, t.Name, "", t)
-		// 		if err != nil {
-		// 			return nil, err
-		// 		}
-		//
-		// 		// generate graphql loader template
-		// 		err = args.ExecuteTemplate(GraphQLLoaderTemplate, t.Name, "", t)
-		// 		if err != nil {
-		// 			return nil, err
-		// 		}
-		//
-		// 		// generate graphql resolver template
-		// 		err = args.ExecuteTemplate(GraphQLResolverTemplate, t.Name, "", t)
-		// 		if err != nil {
-		// 			return nil, err
-		// 		}
-		//  }
-
 	}
 
 	return tableMap, nil
@@ -628,13 +589,7 @@ func (tl TypeLoader) LoadForeignKeys(args *ArgType, tableMap map[string]*Type) (
 		if err != nil {
 			return nil, err
 		}
-		//
-		// if args.GraphQL {
-		// 	err = args.ExecuteTemplate(GraphQLForeignKeyTemplate, fk.Type.Name, fk.ForeignKey.ForeignKeyName, fk)
-		// 	if err != nil {
-		// 		return nil, err
-		// 	}
-		// }
+
 	}
 
 	return fkMap, nil
@@ -840,110 +795,110 @@ func (tl TypeLoader) LoadIndexColumns(args *ArgType, ixTpl *Index) error {
 	return nil
 }
 
-// LoadRelkind loads a schema table/view definition.
-func (tl TypeLoader) LoadCustomSchema(args *ArgType, relType RelType, ctableMap map[string]*Type) error {
-	var err error
-
-	// load tables
-	tableList, err := tl.TableList(args.DB, args.Schema, tl.Relkind(relType))
-	if err != nil {
-		return err
-	}
-
-	// tables
-	tableMap := make(map[string]*Type)
-	for _, ti := range tableList {
-
-		// create template
-		typeTpl := &Type{
-			Name:        SingularizeIdentifier(ti.TableName),
-			Schema:      args.Schema,
-			RelType:     relType,
-			Fields:      []*Field{},
-			Table:       ti,
-			ForeignKeys: nil,
-			Indexs:      nil,
-		}
-
-		// load keys per table
-		fkMap := map[string]*ForeignKey{}
-		err = tl.LoadTableForeignKeys(args, ctableMap, ctableMap[ti.TableName], fkMap)
-		if err != nil {
-			return err
-		}
-
-		// determine foreign key names
-		for i, fk := range fkMap {
-			fkMap[i].Name = args.ForeignKeyName(fkMap, fk)
-		}
-
-		// load table indexes
-		ixMap := map[string]*Index{}
-		err = tl.LoadTableIndexes(args, ctableMap[ti.TableName], ixMap)
-		if err != nil {
-			return err
-		}
-
-		typeTpl.ForeignKeys = append(typeTpl.ForeignKeys, fkMap)
-		typeTpl.Indexs = append(typeTpl.Indexs, ixMap)
-
-		// process columns
-		err = tl.LoadColumns(args, typeTpl)
-		if err != nil {
-			return err
-		}
-
-		tableMap[ti.TableName] = typeTpl
-	}
-
-	// generate table templates
-	for _, t := range tableMap {
-
-		// GraphQl Support
-		if args.GraphQL {
-			// generate graphql bundle template
-			err = args.ExecuteTemplate(GraphQLBundleTemplate, t.Name, "", t)
-			if err != nil {
-				return err
-			}
-
-			err = args.ExecuteTemplate(GraphQLForeignKeyTemplate, t.Name, "", t)
-			if err != nil {
-				return err
-			}
-
-			// generate graphql type template
-			err = args.ExecuteTemplate(GraphQLTypeTemplate, t.Name, "", t)
-			if err != nil {
-				return err
-			}
-
-			// generate graphql query template
-			err = args.ExecuteTemplate(GraphQLQueryTemplate, t.Name, "", t)
-			if err != nil {
-				return err
-			}
-
-			// generate graphql mutation template
-			err = args.ExecuteTemplate(GraphQLMutationTemplate, t.Name, "", t)
-			if err != nil {
-				return err
-			}
-
-			// generate graphql loader template
-			err = args.ExecuteTemplate(GraphQLLoaderTemplate, t.Name, "", t)
-			if err != nil {
-				return err
-			}
-
-			// generate graphql resolver template
-			err = args.ExecuteTemplate(GraphQLResolverTemplate, t.Name, "", t)
-			if err != nil {
-				return err
-			}
-		}
-
-	}
-
-	return nil
-}
+// // LoadRelkind loads a schema table/view definition.
+// func (tl TypeLoader) LoadCustomSchema(args *ArgType, relType RelType, ctableMap map[string]*Type) error {
+// 	var err error
+//
+// 	// load tables
+// 	tableList, err := tl.TableList(args.DB, args.Schema, tl.Relkind(relType))
+// 	if err != nil {
+// 		return err
+// 	}
+//
+// 	// tables
+// 	tableMap := make(map[string]*Type)
+// 	for _, ti := range tableList {
+//
+// 		// create template
+// 		typeTpl := &Type{
+// 			Name:        SingularizeIdentifier(ti.TableName),
+// 			Schema:      args.Schema,
+// 			RelType:     relType,
+// 			Fields:      []*Field{},
+// 			Table:       ti,
+// 			ForeignKeys: nil,
+// 			Indexs:      nil,
+// 		}
+//
+// 		// load keys per table
+// 		fkMap := map[string]*ForeignKey{}
+// 		err = tl.LoadTableForeignKeys(args, ctableMap, ctableMap[ti.TableName], fkMap)
+// 		if err != nil {
+// 			return err
+// 		}
+//
+// 		// determine foreign key names
+// 		for i, fk := range fkMap {
+// 			fkMap[i].Name = args.ForeignKeyName(fkMap, fk)
+// 		}
+//
+// 		// load table indexes
+// 		ixMap := map[string]*Index{}
+// 		err = tl.LoadTableIndexes(args, ctableMap[ti.TableName], ixMap)
+// 		if err != nil {
+// 			return err
+// 		}
+//
+// 		typeTpl.ForeignKeys = append(typeTpl.ForeignKeys, fkMap)
+// 		typeTpl.Indexs = append(typeTpl.Indexs, ixMap)
+//
+// 		// process columns
+// 		err = tl.LoadColumns(args, typeTpl)
+// 		if err != nil {
+// 			return err
+// 		}
+//
+// 		tableMap[ti.TableName] = typeTpl
+// 	}
+//
+// 	// generate table templates
+// 	for _, t := range tableMap {
+//
+// 		// GraphQl Support
+// 		if args.GraphQL {
+// 			// generate graphql bundle template
+// 			err = args.ExecuteTemplate(GraphQLBundleTemplate, t.Name, "", t)
+// 			if err != nil {
+// 				return err
+// 			}
+//
+// 			err = args.ExecuteTemplate(GraphQLForeignKeyTemplate, t.Name, "", t)
+// 			if err != nil {
+// 				return err
+// 			}
+//
+// 			// generate graphql type template
+// 			err = args.ExecuteTemplate(GraphQLTypeTemplate, t.Name, "", t)
+// 			if err != nil {
+// 				return err
+// 			}
+//
+// 			// generate graphql query template
+// 			err = args.ExecuteTemplate(GraphQLQueryTemplate, t.Name, "", t)
+// 			if err != nil {
+// 				return err
+// 			}
+//
+// 			// generate graphql mutation template
+// 			err = args.ExecuteTemplate(GraphQLMutationTemplate, t.Name, "", t)
+// 			if err != nil {
+// 				return err
+// 			}
+//
+// 			// generate graphql loader template
+// 			err = args.ExecuteTemplate(GraphQLLoaderTemplate, t.Name, "", t)
+// 			if err != nil {
+// 				return err
+// 			}
+//
+// 			// generate graphql resolver template
+// 			err = args.ExecuteTemplate(GraphQLResolverTemplate, t.Name, "", t)
+// 			if err != nil {
+// 				return err
+// 			}
+// 		}
+//
+// 	}
+//
+// 	return nil
+// }

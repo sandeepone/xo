@@ -1,1 +1,0 @@
-postgres.graphql.resolver.go.tpl

@@ -17,6 +17,8 @@ const (
 
 	GraphQLBundleTemplate
 	GraphQLTypeTemplate
+	GraphQLFieldTemplate
+	GraphQLMethodTemplate
 	GraphQLForeignKeyTemplate
 	GraphQLQueryTemplate
 	GraphQLMutationTemplate
@@ -51,6 +53,10 @@ func (tt TemplateType) String() string {
 		s = "graphql.bundle"
 	case GraphQLTypeTemplate:
 		s = "graphql.type"
+	case GraphQLFieldTemplate:
+		s = "graphql.field"
+	case GraphQLMethodTemplate:
+		s = "graphql.method"
 	case GraphQLForeignKeyTemplate:
 		s = "graphql.foreignkey"
 	case GraphQLQueryTemplate:
