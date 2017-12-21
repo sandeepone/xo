@@ -1,7 +1,6 @@
 package internal
 
 import (
-	"bytes"
 	"log"
 	"strings"
 
@@ -51,6 +50,31 @@ type CodeGen struct {
 	graphSchema  string
 	mutationName string
 	queryName    string
+}
+
+type GqlField struct {
+	TypeKind         string
+	TypeName         string
+	FieldName        string
+	FieldDescription string
+	FieldType        string
+	IsEntry          bool
+}
+
+type FieldArgument struct {
+	Name string
+	Type string
+}
+
+type GqlMethod struct {
+	TypeKind          string
+	TypeName          string
+	MethodArguments   []FieldArgument
+	MethodDescription string
+	MethodName        string
+	MethodReturnType  string
+	MethodReturn      string
+	IsEntry           bool
 }
 
 func NewCodeGen(graphSchema string) *CodeGen {
@@ -135,8 +159,8 @@ func (g *CodeGen) generateEntryPoint(args *ArgType) error {
 
 func (g *CodeGen) generateType(args *ArgType, tp *introspection.Type) error {
 	name := *tp.Name()
-
 	templateType := GraphQLTypeTemplate
+	templateName := name
 
 	if name == g.queryName {
 		templateType = GraphQLQueryTemplate
@@ -146,12 +170,12 @@ func (g *CodeGen) generateType(args *ArgType, tp *introspection.Type) error {
 		templateType = GraphQLMutationTemplate
 	}
 
-	templateName := strings.TrimSuffix(name, "Edge")
+	templateName = strings.TrimSuffix(name, "Edge")
 	templateName = strings.TrimSuffix(templateName, "Connection")
 
 	// if verbose
 	if args.Verbose {
-		log.Printf("GenerateType [%s] Template Name [%s] Query [%t]", name, templateName, (name == g.queryName))
+		log.Printf("GenerateType [%s] Template Name [%s]", name, templateName)
 	}
 
 	// Move this to a util func (g *CodeGen)
@@ -160,31 +184,24 @@ func (g *CodeGen) generateType(args *ArgType, tp *introspection.Type) error {
 		ifields = *tp.Fields(&struct{ IncludeDeprecated bool }{true})
 	}
 
-	fields := make([]string, len(ifields))
-	methods := make([]string, len(ifields))
+	fields := make([]GqlField, len(ifields))
+	methods := make([]GqlMethod, len(ifields))
 
 	for i, fp := range ifields {
-		fieldCode, methodCode, err := g.generateField(args, fp, tp)
-		if err != nil {
-			return err
-		}
+		fieldCode, methodCode := g.generateField(args, fp, tp)
 		fields[i] = fieldCode
 		methods[i] = methodCode
 	}
 
-	var inputFields []string
+	var inputFields []GqlField
 	if tp.InputFields() != nil {
 		for _, ip := range *tp.InputFields() {
-			inputField, err := g.generateInputValue(args, ip, tp)
-			if err != nil {
-				return err
-			}
+			inputField := g.generateInputValue(args, ip, tp)
 			inputFields = append(inputFields, inputField)
 		}
 	}
 
 	possibleTypes := []string{}
-
 	if tp.PossibleTypes() != nil {
 		for _, tp := range *tp.PossibleTypes() {
 			possibleTypes = append(possibleTypes, *tp.Name())
@@ -219,82 +236,56 @@ func (g *CodeGen) generateType(args *ArgType, tp *introspection.Type) error {
 	return nil
 }
 
-func (g *CodeGen) generateInputValue(args *ArgType, ip *introspection.InputValue, tp *introspection.Type) (string, error) {
+func (g *CodeGen) generateInputValue(args *ArgType, ip *introspection.InputValue, tp *introspection.Type) GqlField {
 	name := ip.Name()
-
 	fieldTypeName := g.getTypeName(ip.Type(), false)
 
-	fieldTpl := map[string]interface{}{
-		"TypeKind":         tp.Kind(),
-		"FieldName":        name,
-		"FieldDescription": args.removeLineBreaks(g.returnString(ip.Description())),
-		"FieldType":        fieldTypeName,
-		"IsEntry":          g.isEntryPoint(name),
+	return GqlField{
+		TypeKind:         tp.Kind(),
+		TypeName:         name,
+		FieldName:        name,
+		FieldDescription: args.removeLineBreaks(g.returnString(ip.Description())),
+		FieldType:        fieldTypeName,
+		IsEntry:          g.isEntryPoint(name),
 	}
 
-	// generate field template
-	fieldCode, err := args.ExecuteTemplateBuffer(GraphQLFieldTemplate, name, fieldTypeName, fieldTpl)
-	if err != nil {
-		return "", err
-	}
-
-	return string(fieldCode.Bytes()), nil
 }
 
-func (g *CodeGen) generateField(args *ArgType, fp *introspection.Field, tp *introspection.Type) (string, string, error) {
+func (g *CodeGen) generateField(args *ArgType, fp *introspection.Field, tp *introspection.Type) (GqlField, GqlMethod) {
 	name := fp.Name()
 	typeName := *tp.Name()
-	fieldCode := &bytes.Buffer{}
-	methodCode := &bytes.Buffer{}
 
 	fieldTypeName := g.getTypeName(fp.Type(), false)
-
-	type fieldArgument struct {
-		Name string
-		Type string
-	}
-	fieldArguments := make([]fieldArgument, 0, len(fp.Args()))
+	fieldArguments := make([]FieldArgument, 0, len(fp.Args()))
 
 	for _, field := range fp.Args() {
-		fieldArguments = append(fieldArguments, fieldArgument{
+		fieldArguments = append(fieldArguments, FieldArgument{
 			Name: field.Name(),
 			Type: g.getTypeName(field.Type(), true),
 		})
 	}
 
-	fieldTpl := map[string]interface{}{
-		"TypeKind":         tp.Kind(),
-		"FieldName":        name,
-		"FieldDescription": args.removeLineBreaks(g.returnString(fp.Description())),
-		"FieldType":        fieldTypeName,
-		"IsEntry":          g.isEntryPoint(name),
+	gqlField := GqlField{
+		TypeKind:         tp.Kind(),
+		TypeName:         typeName,
+		FieldName:        name,
+		FieldDescription: args.removeLineBreaks(g.returnString(fp.Description())),
+		FieldType:        fieldTypeName,
+		IsEntry:          g.isEntryPoint(name),
 	}
 
-	// generate field template
-	var err error
-	fieldCode, err = args.ExecuteTemplateBuffer(GraphQLFieldTemplate, name, typeName, fieldTpl)
-	if err != nil {
-		return "", "", err
+	gqlMethod := GqlMethod{
+		TypeKind:          tp.Kind(),
+		TypeName:          typeName,
+		MethodArguments:   fieldArguments,
+		MethodDescription: args.removeLineBreaks(g.returnString(fp.Description())),
+		MethodName:        name,
+		MethodReturnType:  fieldTypeName,
+		MethodReturn:      name,
+		IsEntry:           g.isEntryPoint(typeName),
 	}
 
-	methodTpl := map[string]interface{}{
-		"TypeKind":          tp.Kind(),
-		"TypeName":          typeName,
-		"MethodArguments":   fieldArguments,
-		"MethodDescription": args.removeLineBreaks(g.returnString(fp.Description())),
-		"MethodName":        name,
-		"MethodReturnType":  fieldTypeName,
-		"MethodReturn":      name,
-		"IsEntry":           g.isEntryPoint(typeName),
-	}
-
-	// generate field template
-	methodCode, err = args.ExecuteTemplateBuffer(GraphQLMethodTemplate, name, typeName, methodTpl)
-	if err != nil {
-		return "", "", err
-	}
-
-	return string(fieldCode.Bytes()), string(methodCode.Bytes()), nil
+	return gqlField, gqlMethod
 }
 
 func (g *CodeGen) getPointer(typeName string, fp *introspection.Field) string {
