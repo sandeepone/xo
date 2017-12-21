@@ -90,7 +90,7 @@ func main() {
 		//	}
 	} else {
 		// save driver type
-		args.LoaderType = "mysql"
+		args.LoaderType = "postgres"
 		args.Suffix = "_gen.go"
 
 		// Neelance Graphql Generator
@@ -274,10 +274,10 @@ func getFile(args *internal.ArgType, t *internal.TBuf) (*os.File, error) {
 		//filename = "types/" + filename + ".go"
 		//args.Package = "types"
 		filename = path.Join(args.Path, filename) + args.Suffix
-	} else if t.TemplateType.String() == "graphql.bundle" {
-		filename = "services/" + bundle + "/service.go"
-		args.Package = bundle
-	} else if t.TemplateType.String() == "graphql.query" {
+		// } else if t.TemplateType.String() == "graphql.bundle" {
+		// 	filename = "services/" + bundle + "/service.go"
+		// 	args.Package = bundle
+	} else if t.TemplateType.String() == "graphql.query1111" {
 		filename = filename + "_query"
 		// filename = "services/" + bundle + "/query.go"
 		// args.Package = bundle
@@ -285,15 +285,9 @@ func getFile(args *internal.ArgType, t *internal.TBuf) (*os.File, error) {
 	} else if t.TemplateType.String() == "graphql.mutation1111" {
 		filename = "services/" + bundle + "/mutation.go"
 		args.Package = bundle
-	} else if t.TemplateType.String() == "graphql.foreignkey" {
-		filename = "types/edges/" + filename + ".go"
-		args.Package = "edges"
 	} else if t.TemplateType.String() == "graphql.loader1111" {
 		filename = "loaders/" + filename + ".go"
 		args.Package = "loaders"
-	} else if t.TemplateType.String() == "graphql.resolver111" {
-		filename = "resolvers/" + filename + ".go"
-		args.Package = "resolvers"
 	} else {
 		args.Package = path.Base(args.Path)
 		filename = path.Join(args.Path, filename) + args.Suffix
@@ -373,6 +367,11 @@ func writeTypes(args *internal.ArgType) error {
 
 		// skip when in append and type is XO
 		if args.Append && t.TemplateType == internal.XOTemplate {
+			continue
+		}
+
+		// skip when in Graphql field/method
+		if t.TemplateType == internal.GraphQLFieldTemplate || t.TemplateType == internal.GraphQLMethodTemplate {
 			continue
 		}
 

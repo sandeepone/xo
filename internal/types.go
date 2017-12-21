@@ -19,11 +19,9 @@ const (
 	GraphQLTypeTemplate
 	GraphQLFieldTemplate
 	GraphQLMethodTemplate
-	GraphQLForeignKeyTemplate
 	GraphQLQueryTemplate
 	GraphQLMutationTemplate
 	GraphQLLoaderTemplate
-	GraphQLResolverTemplate
 
 	// always last
 	XOTemplate
@@ -57,16 +55,12 @@ func (tt TemplateType) String() string {
 		s = "graphql.field"
 	case GraphQLMethodTemplate:
 		s = "graphql.method"
-	case GraphQLForeignKeyTemplate:
-		s = "graphql.foreignkey"
 	case GraphQLQueryTemplate:
 		s = "graphql.query"
 	case GraphQLMutationTemplate:
 		s = "graphql.mutation"
 	case GraphQLLoaderTemplate:
 		s = "graphql.loader"
-	case GraphQLResolverTemplate:
-		s = "graphql.resolver"
 	default:
 		panic("unknown TemplateType")
 	}

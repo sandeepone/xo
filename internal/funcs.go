@@ -829,5 +829,5 @@ func (a *ArgType) includesString(strings []string, str string) bool {
 }
 
 func (a *ArgType) isEntryPoint(str string) bool {
-	return str == "mutation" || str == "query"
+	return str == "Mutation" || str == "Query"
 }

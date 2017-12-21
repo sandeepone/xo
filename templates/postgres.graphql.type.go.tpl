@@ -1,11 +1,11 @@
 {{if eq .Kind "OBJECT"}}
 {{if not (is_entry .TypeName) }}
-// {{.TypeName}} {{.TypeDescription}}
+// {{.TypeName}} {{.TypeDescription}} - OBJECT
 type {{.TypeName}} struct {
   {{range .Fields}}{{.}}{{end}}
 }
 
-// {{.TypeName}}Resolver resolver for {{.TypeName}}
+// {{.TypeName}}Resolver resolver for {{.TypeName}} - Type Resolver
 type {{.TypeName}}Resolver struct {
   {{.TypeName}}
 }
@@ -24,7 +24,7 @@ func (r *{{.TypeName}}Resolver) UnmarshalJSON(data []byte) error {
 {{end}}
 
 {{if eq .Kind "INTERFACE"}}
-// {{.TypeName}} {{.TypeDescription}}
+// {{.TypeName}} {{.TypeDescription}} - INTERFACE
 type {{.TypeName}} interface {
   {{range .Methods}}{{.}}{{end}}
 }
@@ -44,7 +44,7 @@ type {{.TypeName}}Resolver struct {
 {{end}}
 
 {{if eq .Kind "UNION"}}
-// {{.TypeName}}Resolver resolver for {{.TypeName}}
+// {{.TypeName}}Resolver resolver for {{.TypeName}} - UNION
 type {{.TypeName}}Resolver struct {
   {{.TypeName | uncapitalize}} interface{}
 }
@@ -61,7 +61,7 @@ type {{.TypeName}}Resolver struct {
 {{if eq .Kind "ENUM"}}
 {{ $typeName := .TypeName }}
 {{ $typeDescription := .TypeDescription }}
-// {{.TypeName}} {{.TypeDescription}}
+// {{.TypeName}} {{.TypeDescription}} - ENUM
 type {{$typeName}} string
 const (
 {{range $value := .EnumValues}}
@@ -72,20 +72,20 @@ const (
 {{end}}
 
 {{if eq .Kind "INPUT_OBJECT"}}
-// {{.TypeName}} {{.TypeDescription}}
+// {{.TypeName}} {{.TypeDescription}} INPUT_OBJECT
 type {{.TypeName}} struct {
   {{range .InputFields}}{{.}}{{end}}
 }
 {{end}}
 
 {{if eq .Kind "RESOLVER"}}
-// {{.TypeName}} {{.TypeDescription}}
+// {{.TypeName}} {{.TypeDescription}} - RESOLVER
 type {{.TypeName}} struct {
 }
 {{end}}
 
 {{if eq .Kind "SCALAR"}}
-// {{.TypeName}}Resolver {{.TypeDescription}}
+// {{.TypeName}}Resolver {{.TypeDescription}} - SCALAR
 type {{.TypeName}}Resolver struct {
   value interface{}
 }

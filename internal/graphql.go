@@ -36,6 +36,10 @@ var (
 			true,
 			"graphql.ID",
 		},
+		"Time": typeConfig{
+			true,
+			"graphql.Time",
+		},
 		"String": typeConfig{
 			true,
 			"string",
@@ -89,7 +93,6 @@ func (g *CodeGen) Generate(args *ArgType) error {
 
 		log.Printf("Generating Go code for %s %s", qlType.Kind(), name)
 
-		//var code string
 		err = g.generateType(args, qlType)
 		if err != nil {
 			return err
@@ -119,11 +122,10 @@ func (g *CodeGen) generateEntryPoint(args *ArgType) error {
 		"Kind":            "RESOLVER",
 		"TypeName":        "Resolver",
 		"TypeDescription": "Resolver is the main resolver for all queries",
-		"Config":          "",
 	}
 
 	// generate query type template
-	err := args.ExecuteTemplate(GraphQLTypeTemplate, "default", "", typeTpl)
+	err := args.ExecuteTemplate(GraphQLTypeTemplate, "default", "RESOLVER", typeTpl)
 	if err != nil {
 		return err
 	}
@@ -133,6 +135,14 @@ func (g *CodeGen) generateEntryPoint(args *ArgType) error {
 
 func (g *CodeGen) generateType(args *ArgType, tp *introspection.Type) error {
 	name := *tp.Name()
+
+	templateName := strings.TrimSuffix(name, "Edge")
+	templateName = strings.TrimSuffix(templateName, "Connection")
+
+	// if verbose
+	if args.Verbose {
+		log.Printf("GenerateType [%s] Template Name [%s]", name, templateName)
+	}
 
 	// Move this to a util func (g *CodeGen)
 	var ifields []*introspection.Field
@@ -184,21 +194,16 @@ func (g *CodeGen) generateType(args *ArgType, tp *introspection.Type) error {
 		"EnumValues":      enumValues,
 		"TypeName":        name,
 		"TypeDescription": args.removeLineBreaks(g.returnString(tp.Description())),
-		"Config":          "",
 		"Fields":          fields,
 		"InputFields":     inputFields,
 		"Methods":         methods,
-		"Imports":         "",
-		"TemplateConfig":  "",
 	}
 
 	// generate query type template
-	err := args.ExecuteTemplate(GraphQLTypeTemplate, name, "", typeTpl)
+	err := args.ExecuteTemplate(GraphQLTypeTemplate, templateName, tp.Kind(), typeTpl)
 	if err != nil {
 		return err
 	}
-
-	//}
 
 	return nil
 }
@@ -213,12 +218,10 @@ func (g *CodeGen) generateInputValue(args *ArgType, ip *introspection.InputValue
 		"FieldName":        name,
 		"FieldDescription": args.removeLineBreaks(g.returnString(ip.Description())),
 		"FieldType":        fieldTypeName,
-		"Config":           "",
-		"TemplateConfig":   "",
 	}
 
 	// generate field template
-	fieldCode, err := args.ExecuteTemplateBuffer(GraphQLFieldTemplate, name, "", fieldTpl)
+	fieldCode, err := args.ExecuteTemplateBuffer(GraphQLFieldTemplate, name, fieldTypeName, fieldTpl)
 	if err != nil {
 		return "", err
 	}
@@ -252,8 +255,6 @@ func (g *CodeGen) generateField(args *ArgType, fp *introspection.Field, tp *intr
 		"FieldName":        name,
 		"FieldDescription": args.removeLineBreaks(g.returnString(fp.Description())),
 		"FieldType":        fieldTypeName,
-		"Config":           "",
-		"TemplateConfig":   "",
 	}
 
 	// generate field template
@@ -271,8 +272,6 @@ func (g *CodeGen) generateField(args *ArgType, fp *introspection.Field, tp *intr
 		"MethodName":        name,
 		"MethodReturnType":  fieldTypeName,
 		"MethodReturn":      name,
-		"Config":            "",
-		"TemplateConfig":    "",
 	}
 
 	// generate field template

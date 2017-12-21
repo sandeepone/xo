@@ -110,7 +110,7 @@ func (a *ArgType) ExecuteTemplateBuffer(tt TemplateType, name string, sub string
 		return nil, err
 	}
 
-	a.Generated = append(a.Generated, v)
+	//a.Generated = append(a.Generated, v)
 	return v.Buf, nil
 }
 
