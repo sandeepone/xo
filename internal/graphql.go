@@ -136,6 +136,16 @@ func (g *CodeGen) generateEntryPoint(args *ArgType) error {
 func (g *CodeGen) generateType(args *ArgType, tp *introspection.Type) error {
 	name := *tp.Name()
 
+	templateType := GraphQLTypeTemplate
+
+	if name == g.queryName {
+		templateType = GraphQLQueryTemplate
+	}
+
+	if name == g.mutationName {
+		templateType = GraphQLMutationTemplate
+	}
+
 	templateName := strings.TrimSuffix(name, "Edge")
 	templateName = strings.TrimSuffix(templateName, "Connection")
 
@@ -197,10 +207,11 @@ func (g *CodeGen) generateType(args *ArgType, tp *introspection.Type) error {
 		"Fields":          fields,
 		"InputFields":     inputFields,
 		"Methods":         methods,
+		"IsEntry":         g.isEntryPoint(name),
 	}
 
 	// generate query type template
-	err := args.ExecuteTemplate(GraphQLTypeTemplate, templateName, tp.Kind(), typeTpl)
+	err := args.ExecuteTemplate(templateType, templateName, tp.Kind(), typeTpl)
 	if err != nil {
 		return err
 	}
@@ -218,6 +229,7 @@ func (g *CodeGen) generateInputValue(args *ArgType, ip *introspection.InputValue
 		"FieldName":        name,
 		"FieldDescription": args.removeLineBreaks(g.returnString(ip.Description())),
 		"FieldType":        fieldTypeName,
+		"IsEntry":          g.isEntryPoint(name),
 	}
 
 	// generate field template
@@ -255,6 +267,7 @@ func (g *CodeGen) generateField(args *ArgType, fp *introspection.Field, tp *intr
 		"FieldName":        name,
 		"FieldDescription": args.removeLineBreaks(g.returnString(fp.Description())),
 		"FieldType":        fieldTypeName,
+		"IsEntry":          g.isEntryPoint(name),
 	}
 
 	// generate field template
@@ -272,6 +285,7 @@ func (g *CodeGen) generateField(args *ArgType, fp *introspection.Field, tp *intr
 		"MethodName":        name,
 		"MethodReturnType":  fieldTypeName,
 		"MethodReturn":      name,
+		"IsEntry":           g.isEntryPoint(typeName),
 	}
 
 	// generate field template

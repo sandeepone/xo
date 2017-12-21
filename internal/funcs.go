@@ -69,7 +69,6 @@ func (a *ArgType) NewTemplateFuncs() template.FuncMap {
 		"remove_line_breaks": a.removeLineBreaks,
 		"includes_string":    a.includesString,
 		"sprintf":            fmt.Sprintf,
-		"is_entry":           a.isEntryPoint,
 	}
 }
 
@@ -826,8 +825,4 @@ func (a *ArgType) includesString(strings []string, str string) bool {
 	}
 
 	return false
-}
-
-func (a *ArgType) isEntryPoint(str string) bool {
-	return str == "Mutation" || str == "Query"
 }

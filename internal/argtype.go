@@ -156,6 +156,10 @@ type ArgType struct {
 
 	// GraphQL schema path.
 	GraphQLSchema string `arg:"-S,--gqlschema,help:Path to GraphQL Schema file or directory"`
+
+	// Sub Package is the name used to generate package headers. If not specified,
+	// the name of the directory will be used instead.
+	SubPackage string `arg:"help:SubPackage name used in generated Go code"`
 }
 
 // NewDefaultArgs returns the default arguments.

@@ -270,6 +270,7 @@ func getFile(args *internal.ArgType, t *internal.TBuf) (*os.File, error) {
 	var bundle = path.Base(filename)
 
 	if t.TemplateType.String() == "graphql.type" {
+		args.SubPackage = "type"
 		filename = filename + "_type"
 		//filename = "types/" + filename + ".go"
 		//args.Package = "types"
@@ -277,7 +278,8 @@ func getFile(args *internal.ArgType, t *internal.TBuf) (*os.File, error) {
 		// } else if t.TemplateType.String() == "graphql.bundle" {
 		// 	filename = "services/" + bundle + "/service.go"
 		// 	args.Package = bundle
-	} else if t.TemplateType.String() == "graphql.query1111" {
+	} else if t.TemplateType.String() == "graphql.query" {
+		args.SubPackage = "query"
 		filename = filename + "_query"
 		// filename = "services/" + bundle + "/query.go"
 		// args.Package = bundle
@@ -291,6 +293,11 @@ func getFile(args *internal.ArgType, t *internal.TBuf) (*os.File, error) {
 	} else {
 		args.Package = path.Base(args.Path)
 		filename = path.Join(args.Path, filename) + args.Suffix
+	}
+
+	// determine SubPackage name
+	if args.SubPackage == "" {
+		args.SubPackage = path.Base(filename)
 	}
 
 	dest := path.Dir(filename)

@@ -1,6 +1,6 @@
 {{if eq .Kind "OBJECT"}}
-{{if not (is_entry .TypeName) }}
-// {{.TypeName}} {{.TypeDescription}} - OBJECT
+
+// {{.TypeName}} {{.TypeDescription}}
 type {{.TypeName}} struct {
   {{range .Fields}}{{.}}{{end}}
 }
@@ -9,10 +9,9 @@ type {{.TypeName}} struct {
 type {{.TypeName}}Resolver struct {
   {{.TypeName}}
 }
-{{end}}
-{{range .Methods}}{{.}}
-{{end}}
-{{if not (is_entry .TypeName) }}
+
+{{range .Methods}} {{.}} {{end}}
+
 func (r *{{.TypeName}}Resolver) MarshalJSON() ([]byte, error) {
   return json.Marshal(&r.{{.TypeName}})
 }
@@ -20,11 +19,11 @@ func (r *{{.TypeName}}Resolver) MarshalJSON() ([]byte, error) {
 func (r *{{.TypeName}}Resolver) UnmarshalJSON(data []byte) error {
   return json.Unmarshal(data, &r.{{.TypeName}})
 }
-{{end}}
+
 {{end}}
 
 {{if eq .Kind "INTERFACE"}}
-// {{.TypeName}} {{.TypeDescription}} - INTERFACE
+// {{.TypeName}} {{.TypeDescription}}
 type {{.TypeName}} interface {
   {{range .Methods}}{{.}}{{end}}
 }
@@ -44,7 +43,7 @@ type {{.TypeName}}Resolver struct {
 {{end}}
 
 {{if eq .Kind "UNION"}}
-// {{.TypeName}}Resolver resolver for {{.TypeName}} - UNION
+// {{.TypeName}}Resolver resolver for {{.TypeName}}
 type {{.TypeName}}Resolver struct {
   {{.TypeName | uncapitalize}} interface{}
 }
@@ -61,7 +60,7 @@ type {{.TypeName}}Resolver struct {
 {{if eq .Kind "ENUM"}}
 {{ $typeName := .TypeName }}
 {{ $typeDescription := .TypeDescription }}
-// {{.TypeName}} {{.TypeDescription}} - ENUM
+// {{.TypeName}} {{.TypeDescription}}
 type {{$typeName}} string
 const (
 {{range $value := .EnumValues}}
@@ -72,20 +71,20 @@ const (
 {{end}}
 
 {{if eq .Kind "INPUT_OBJECT"}}
-// {{.TypeName}} {{.TypeDescription}} INPUT_OBJECT
+// {{.TypeName}} {{.TypeDescription}}
 type {{.TypeName}} struct {
   {{range .InputFields}}{{.}}{{end}}
 }
 {{end}}
 
 {{if eq .Kind "RESOLVER"}}
-// {{.TypeName}} {{.TypeDescription}} - RESOLVER
+// {{.TypeName}} {{.TypeDescription}}
 type {{.TypeName}} struct {
 }
 {{end}}
 
 {{if eq .Kind "SCALAR"}}
-// {{.TypeName}}Resolver {{.TypeDescription}} - SCALAR
+// {{.TypeName}}Resolver {{.TypeDescription}}
 type {{.TypeName}}Resolver struct {
   value interface{}
 }
