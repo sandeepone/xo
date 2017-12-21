@@ -141,7 +141,7 @@ func (g *CodeGen) generateType(args *ArgType, tp *introspection.Type) error {
 
 	// if verbose
 	if args.Verbose {
-		log.Printf("GenerateType [%s] Template Name [%s]", name, templateName)
+		log.Printf("GenerateType [%s] Template Name [%s] Query [%t]", name, templateName, (name == g.queryName))
 	}
 
 	// Move this to a util func (g *CodeGen)
