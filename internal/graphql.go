@@ -115,7 +115,7 @@ func (g *CodeGen) Generate(args *ArgType) error {
 			entryPoint = true
 		}
 
-		log.Printf("Generating Go code for %s %s", qlType.Kind(), name)
+		//log.Printf("Generating Go code for %s %s", qlType.Kind(), name)
 
 		err = g.generateType(args, qlType)
 		if err != nil {
@@ -175,7 +175,7 @@ func (g *CodeGen) generateType(args *ArgType, tp *introspection.Type) error {
 
 	// if verbose
 	if args.Verbose {
-		log.Printf("GenerateType [%s] Template Name [%s]", name, templateName)
+		log.Printf("GenerateType [%s] Template Name [%s] - QUERY [%t]", name, templateName, (name == g.queryName))
 	}
 
 	// Move this to a util func (g *CodeGen)
@@ -227,7 +227,31 @@ func (g *CodeGen) generateType(args *ArgType, tp *introspection.Type) error {
 		"IsEntry":         g.isEntryPoint(name),
 	}
 
-	// generate query type template
+	if templateType == GraphQLQueryTemplate {
+		for _, m := range methods {
+			templateName = args.unCapitalise(m.MethodReturnType)
+			templateName = strings.TrimPrefix(templateName, "*")
+
+			templateName = strings.TrimSuffix(templateName, "Resolver")
+			templateName = strings.TrimSuffix(templateName, "Connection")
+
+			queryMethods := []GqlMethod{}
+			typeTpl["Methods"] = append(queryMethods, m)
+
+			// if verbose
+			if args.Verbose {
+				log.Printf("GenerateQuery [%s] Template Name [%s] MethodName [%s]", name, templateName, m.MethodName)
+			}
+
+			// generate query template
+			err := args.ExecuteTemplate(templateType, templateName, tp.Kind(), typeTpl)
+			if err != nil {
+				return err
+			}
+		}
+	}
+
+	// generate type template
 	err := args.ExecuteTemplate(templateType, templateName, tp.Kind(), typeTpl)
 	if err != nil {
 		return err

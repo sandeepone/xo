@@ -3,8 +3,11 @@
   {{end}}
 }{{ end }}
 
-{{define "receiver"}} {{if .IsEntry }}Resolver{{else}}{{.TypeName}}Resolver{{end}} {{end}}
+{{define "receiver"}}
+{{if .IsEntry }}Resolver{{else}}{{.TypeName}}Resolver{{end}}
+{{end}}
 
+{{- define "method" }}
 {{if eq .TypeKind "OBJECT"}}
 {{$hasArguments := gt (.MethodArguments | len) 0}}
 // {{capitalize .MethodName}} {{.MethodDescription}} - Method
@@ -21,4 +24,6 @@ func (r *{{template "receiver" .}}) {{capitalize .MethodName}}({{if $hasArgument
 {{$hasArguments := gt (.MethodArguments | len) 0}}
 // {{capitalize .MethodName}} {{.MethodDescription}}
 {{capitalize .MethodName}}({{if $hasArguments}}{{template "arguments" .MethodArguments}}{{end}}) {{.MethodReturnType}}
+{{end}}
+
 {{end}}

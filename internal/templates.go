@@ -75,45 +75,6 @@ func (a *ArgType) ExecuteTemplate(tt TemplateType, name string, sub string, obj 
 	return nil
 }
 
-func (a *ArgType) ExecuteTemplateBuffer(tt TemplateType, name string, sub string, obj interface{}) (*bytes.Buffer, error) {
-	var err error
-
-	// setup generated
-	if a.Generated == nil {
-		a.Generated = []TBuf{}
-	}
-
-	// create store
-	v := TBuf{
-		TemplateType: tt,
-		Name:         name,
-		Subname:      sub,
-		Buf:          new(bytes.Buffer),
-	}
-
-	// build template name
-	loaderType := ""
-	if tt != XOTemplate {
-		if a.LoaderType == "oci8" || a.LoaderType == "ora" {
-			// force oracle for oci8 since the oracle driver doesn't recognize
-			// 'oracle' as valid protocol
-			loaderType = "oracle."
-		} else {
-			loaderType = a.LoaderType + "."
-		}
-	}
-	templateName := fmt.Sprintf("%s%s.go.tpl", loaderType, tt)
-
-	// execute template
-	err = a.TemplateSet().Execute(v.Buf, templateName, obj)
-	if err != nil {
-		return nil, err
-	}
-
-	//a.Generated = append(a.Generated, v)
-	return v.Buf, nil
-}
-
 // TemplateSet is a set of templates.
 type TemplateSet struct {
 	funcs template.FuncMap

@@ -27,8 +27,6 @@ func (r *{{template "receiver" .}}) {{capitalize .MethodName}}({{if $hasArgument
 }
 {{- end}}
 
-
-
 {{if eq .TypeKind "INTERFACE"}}
 {{$hasArguments := gt (.MethodArguments | len) 0}}
 // {{capitalize .MethodName}} {{.MethodDescription}}
