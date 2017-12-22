@@ -249,12 +249,15 @@ func (g *CodeGen) generateType(args *ArgType, tp *introspection.Type) error {
 				return err
 			}
 		}
-	}
+	} else {
+		// reset the old methods
+		typeTpl["Methods"] = methods
 
-	// generate type template
-	err := args.ExecuteTemplate(templateType, templateName, tp.Kind(), typeTpl)
-	if err != nil {
-		return err
+		// generate type template
+		err := args.ExecuteTemplate(templateType, templateName, tp.Kind(), typeTpl)
+		if err != nil {
+			return err
+		}
 	}
 
 	return nil

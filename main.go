@@ -367,11 +367,6 @@ func writeTypes(args *internal.ArgType) error {
 	for _, t := range out {
 		var f *os.File
 
-		// // if verbose
-		// if args.Verbose {
-		// 	fmt.Printf("Generated : %s \n\n", t.Name)
-		// }
-
 		// skip when in append and type is XO
 		if args.Append && t.TemplateType == internal.XOTemplate {
 			continue
