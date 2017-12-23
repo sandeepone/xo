@@ -53,12 +53,13 @@ type CodeGen struct {
 }
 
 type GqlField struct {
-	TypeKind         string
-	TypeName         string
-	FieldName        string
-	FieldDescription string
-	FieldType        string
-	IsEntry          bool
+	Name        string
+	Description string
+	FieldType   string
+	TypeKind    string
+	TypeName    string
+	IsEntry     bool
+	IsNullable  bool
 }
 
 type FieldArgument struct {
@@ -67,14 +68,15 @@ type FieldArgument struct {
 }
 
 type GqlMethod struct {
-	TypeKind          string
-	TypeName          string
-	MethodArguments   []FieldArgument
-	MethodDescription string
-	MethodName        string
-	MethodReturnType  string
-	MethodReturn      string
-	IsEntry           bool
+	Name        string
+	Description string
+	TypeKind    string
+	TypeName    string
+	Arguments   []FieldArgument
+	ReturnType  string
+	Return      string
+	IsEntry     bool
+	IsNullable  bool
 }
 
 func NewCodeGen(graphSchema string) *CodeGen {
@@ -229,18 +231,18 @@ func (g *CodeGen) generateType(args *ArgType, tp *introspection.Type) error {
 
 	if templateType == GraphQLQueryTemplate {
 		for _, m := range methods {
-			templateName = args.unCapitalise(m.MethodReturnType)
+			templateName = args.unCapitalise(m.ReturnType)
 			templateName = strings.TrimPrefix(templateName, "*")
 
 			templateName = strings.TrimSuffix(templateName, "Resolver")
 			templateName = strings.TrimSuffix(templateName, "Connection")
 
-			queryMethods := []GqlMethod{}
-			typeTpl["Methods"] = append(queryMethods, m)
+			// override methods to single method in loop
+			typeTpl["Methods"] = append([]GqlMethod{}, m)
 
 			// if verbose
 			if args.Verbose {
-				log.Printf("GenerateQuery [%s] Template Name [%s] MethodName [%s]", name, templateName, m.MethodName)
+				log.Printf("GenerateQuery [%s] Template Name [%s] MethodName [%s]", name, templateName, m.Name)
 			}
 
 			// generate query template
@@ -248,6 +250,11 @@ func (g *CodeGen) generateType(args *ArgType, tp *introspection.Type) error {
 			if err != nil {
 				return err
 			}
+		}
+	} else if templateType == GraphQLMutationTemplate {
+		// if verbose
+		if args.Verbose {
+			log.Printf("GenerateMutation [%s] Template Name [%s] MethodName [%s]", name, templateName, "")
 		}
 	} else {
 		// reset the old methods
@@ -268,12 +275,12 @@ func (g *CodeGen) generateInputValue(args *ArgType, ip *introspection.InputValue
 	fieldTypeName := g.getTypeName(ip.Type(), false)
 
 	return GqlField{
-		TypeKind:         tp.Kind(),
-		TypeName:         name,
-		FieldName:        name,
-		FieldDescription: args.removeLineBreaks(g.returnString(ip.Description())),
-		FieldType:        fieldTypeName,
-		IsEntry:          g.isEntryPoint(name),
+		Name:        name,
+		Description: args.removeLineBreaks(g.returnString(ip.Description())),
+		TypeKind:    tp.Kind(),
+		TypeName:    name,
+		FieldType:   fieldTypeName,
+		IsEntry:     g.isEntryPoint(name),
 	}
 
 }
@@ -293,33 +300,28 @@ func (g *CodeGen) generateField(args *ArgType, fp *introspection.Field, tp *intr
 	}
 
 	gqlField := GqlField{
-		TypeKind:         tp.Kind(),
-		TypeName:         typeName,
-		FieldName:        name,
-		FieldDescription: args.removeLineBreaks(g.returnString(fp.Description())),
-		FieldType:        fieldTypeName,
-		IsEntry:          g.isEntryPoint(name),
+		Name:        name,
+		Description: args.removeLineBreaks(g.returnString(fp.Description())),
+		FieldType:   fieldTypeName,
+		TypeKind:    tp.Kind(),
+		TypeName:    typeName,
+		IsEntry:     g.isEntryPoint(name),
+		IsNullable:  g.isNullable(fp),
 	}
 
 	gqlMethod := GqlMethod{
-		TypeKind:          tp.Kind(),
-		TypeName:          typeName,
-		MethodArguments:   fieldArguments,
-		MethodDescription: args.removeLineBreaks(g.returnString(fp.Description())),
-		MethodName:        name,
-		MethodReturnType:  fieldTypeName,
-		MethodReturn:      name,
-		IsEntry:           g.isEntryPoint(typeName),
+		Name:        name,
+		Description: args.removeLineBreaks(g.returnString(fp.Description())),
+		TypeKind:    tp.Kind(),
+		TypeName:    typeName,
+		Arguments:   fieldArguments,
+		ReturnType:  fieldTypeName,
+		Return:      name,
+		IsEntry:     g.isEntryPoint(typeName),
+		IsNullable:  g.isNullable(fp),
 	}
 
 	return gqlField, gqlMethod
-}
-
-func (g *CodeGen) getPointer(typeName string, fp *introspection.Field) string {
-	if fp.Type().Kind() == "NON_NULL" {
-		return typeName
-	}
-	return "*" + typeName
 }
 
 func (g *CodeGen) getTypeName(tp *introspection.Type, input bool) (typ string) {
@@ -361,6 +363,21 @@ check:
 	}
 
 	return
+}
+
+func (g *CodeGen) getPointer(typeName string, fp *introspection.Field) string {
+	if fp.Type().Kind() == "NON_NULL" {
+		return typeName
+	}
+	return "*" + typeName
+}
+
+func (g *CodeGen) isNullable(fp *introspection.Field) bool {
+	if fp.Type().Kind() == "NON_NULL" {
+		return false
+	}
+
+	return true
 }
 
 func (g *CodeGen) isEntryPoint(a string) bool {

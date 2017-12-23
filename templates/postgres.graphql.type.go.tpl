@@ -1,6 +1,10 @@
 {{ define "field" }}
-// {{capitalize .FieldName}} {{.FieldDescription}}
-{{capitalize .FieldName}} {{.FieldType}} `json:"{{.FieldName}}"`
+// {{capitalize .Name}} {{.Description}}
+{{- if eq .FieldType "graphql.Time" }}
+{{capitalize .Name}} time.Time `json:"{{.Name}}"`
+{{- else }}
+{{capitalize .Name}} {{.FieldType}} `json:"{{.Name}}"`
+{{- end }}
 {{- end }}
 
 
@@ -9,28 +13,31 @@
   {{end}}
 }{{- end }}
 
-{{- define "receiver"}} {{if .IsEntry }}Resolver{{else}}{{.TypeName}}Resolver{{end}}
-{{- end}}
 
 
 
 {{- define "method" }}
-{{if eq .TypeKind "OBJECT"}}
-{{$hasArguments := gt (.MethodArguments | len) 0}}
-// {{capitalize .MethodName}} {{.MethodDescription}}
-func (r *{{template "receiver" .}}) {{capitalize .MethodName}}({{if $hasArguments}}{{template "arguments" .MethodArguments}}{{end}}) {{.MethodReturnType}} {
-  {{- if .IsEntry}}
-  return nil
-  {{- else}}
-  return r.{{.TypeName}}.{{capitalize .MethodReturn}}
-  {{- end}}
+{{ if eq .TypeKind "OBJECT" }}
+{{$hasArguments := gt (.Arguments | len) 0}}
+// {{capitalize .Name}} {{.Description}}
+func (r *{{.TypeName}}Resolver) {{capitalize .Name}}({{if $hasArguments}}{{template "arguments" .Arguments}}{{end}}) {{.ReturnType}} {
+{{- if eq .ReturnType "graphql.Time" }}
+  t, err := time.Parse(time.RFC3339, r.{{.TypeName}}.{{capitalize .Return}})
+	if err != nil {
+		return graphql.Time{}
+	}
+
+	return graphql.Time{Time: t}
+{{- else }}
+  return r.{{.TypeName}}.{{capitalize .Return}}
+{{- end }}
 }
-{{- end}}
+{{- end }}
 
 {{if eq .TypeKind "INTERFACE"}}
-{{$hasArguments := gt (.MethodArguments | len) 0}}
-// {{capitalize .MethodName}} {{.MethodDescription}}
-{{capitalize .MethodName}}({{if $hasArguments}}{{template "arguments" .MethodArguments}}{{end}}) {{.MethodReturnType}}
+{{$hasArguments := gt (.Arguments | len) 0}}
+// {{capitalize .Name}} {{.Description}}
+{{capitalize .Name}}({{if $hasArguments}}{{template "arguments" .Arguments}}{{end}}) {{.ReturnType}}
 {{end}}
 {{- end }}
 

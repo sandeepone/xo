@@ -1,29 +1,29 @@
 {{ define "field" }}
-// {{capitalize .FieldName}} {{.FieldDescription}}
-{{capitalize .FieldName}} {{.FieldType}} `json:"{{.FieldName}}"`
+// {{capitalize .Name}} {{.Description}}
+{{capitalize .Name}} {{.FieldType}} `json:"{{.Name}}"`
 {{- end }}
 
 {{- define "method" }}
 {{if eq .TypeKind "OBJECT"}}
-{{$hasArguments := gt (.MethodArguments | len) 0}}
+{{$hasArguments := gt (.Arguments | len) 0}}
 {{if $hasArguments}}
-// {{capitalize .MethodName}}QueryArgs are the arguments for the "{{.MethodName}}" query.
-type {{capitalize .MethodName}}QueryArgs struct {
-  {{range .MethodArguments}} {{.Name | capitalize}} {{.Type}}
+// {{capitalize .Name}}QueryArgs are the arguments for the "{{.Name}}" query.
+type {{capitalize .Name}}QueryArgs struct {
+  {{range .Arguments}} {{.Name | capitalize}} {{.Type}}
   {{end}}
 }
 {{end}}
-// {{capitalize .MethodName}} {{.MethodDescription}} - Method
-func (r *Resolver) {{capitalize .MethodName}}(ctx context.Context{{if $hasArguments}}, args {{capitalize .MethodName}}QueryArgs{{end}}) ({{.MethodReturnType}}, error) {
+// {{capitalize .Name}} {{.Description}}
+func (r *Resolver) {{capitalize .Name}}(ctx context.Context{{if $hasArguments}}, args {{capitalize .Name}}QueryArgs{{end}}) ({{.ReturnType}}, error) {
 
   return nil, nil
 }
 {{- end}}
 
 {{if eq .TypeKind "INTERFACE"}}
-{{$hasArguments := gt (.MethodArguments | len) 0}}
-// {{capitalize .MethodName}} {{.MethodDescription}}
-{{capitalize .MethodName}}({{if $hasArguments}}{{template "arguments" .MethodArguments}}{{end}}) {{.MethodReturnType}}
+{{$hasArguments := gt (.Arguments | len) 0}}
+// {{capitalize .Name}} {{.Description}}
+{{capitalize .Name}}({{if $hasArguments}}{{template "arguments" .Arguments}}{{end}}) {{.ReturnType}}
 {{end}}
 
 {{- end }}

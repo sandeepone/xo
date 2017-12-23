@@ -15,8 +15,9 @@ import (
 
 	"github.com/mailru/dbr"
 	"github.com/labstack/echo"
-
 	"github.com/neelance/graphql-go"
-	"github.com/gleez/demo/app/relay"
 	"github.com/nicksrandall/dataloader"
+
+	"github.com/gleez/demo/app/relay"
+	"github.com/gleez/demo/delivery/graphql/objects"
 )

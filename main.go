@@ -91,7 +91,7 @@ func main() {
 	} else {
 		// save driver type
 		args.LoaderType = "postgres"
-		args.Suffix = "_gen.go"
+		args.Suffix = ".go"
 
 		// Neelance Graphql Generator
 		schemaBytes, err := ioutil.ReadFile(args.GraphQLSchema)
@@ -270,20 +270,13 @@ func getFile(args *internal.ArgType, t *internal.TBuf) (*os.File, error) {
 	var bundle = path.Base(filename)
 
 	if t.TemplateType.String() == "graphql.type" {
-		args.SubPackage = "type"
-		filename = filename + "_type"
-		//filename = "types/" + filename + ".go"
-		//args.Package = "types"
-		filename = path.Join(args.Path, filename) + args.Suffix
-		// } else if t.TemplateType.String() == "graphql.bundle" {
-		// 	filename = "services/" + bundle + "/service.go"
-		// 	args.Package = bundle
+		//filename = filename + "_type"
+		args.Package = "objects"
+		filename = path.Join(args.Path, "objects/"+filename) + args.Suffix
 	} else if t.TemplateType.String() == "graphql.query" {
-		args.SubPackage = "query"
-		filename = filename + "_query"
-		// filename = "services/" + bundle + "/query.go"
-		// args.Package = bundle
-		filename = path.Join(args.Path, filename) + args.Suffix
+		//filename = filename + "_query"
+		args.Package = "queries"
+		filename = path.Join(args.Path, "queries/"+filename) + args.Suffix
 	} else if t.TemplateType.String() == "graphql.mutation1111" {
 		filename = "services/" + bundle + "/mutation.go"
 		args.Package = bundle
