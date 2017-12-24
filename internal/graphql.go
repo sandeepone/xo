@@ -73,8 +73,9 @@ type GqlMethod struct {
 	TypeKind    string
 	TypeName    string
 	Arguments   []FieldArgument
-	ReturnType  string
 	Return      string
+	ReturnType  string
+	NReturnType string
 	IsEntry     bool
 	IsNullable  bool
 }
@@ -315,8 +316,9 @@ func (g *CodeGen) generateField(args *ArgType, fp *introspection.Field, tp *intr
 		TypeKind:    tp.Kind(),
 		TypeName:    typeName,
 		Arguments:   fieldArguments,
-		ReturnType:  fieldTypeName,
 		Return:      name,
+		ReturnType:  fieldTypeName,
+		NReturnType: strings.Replace(fieldTypeName, "*", "", 1),
 		IsEntry:     g.isEntryPoint(typeName),
 		IsNullable:  g.isNullable(fp),
 	}
@@ -363,13 +365,6 @@ check:
 	}
 
 	return
-}
-
-func (g *CodeGen) getPointer(typeName string, fp *introspection.Field) string {
-	if fp.Type().Kind() == "NON_NULL" {
-		return typeName
-	}
-	return "*" + typeName
 }
 
 func (g *CodeGen) isNullable(fp *introspection.Field) bool {
