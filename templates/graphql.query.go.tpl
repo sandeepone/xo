@@ -7,14 +7,14 @@
 {{if eq .TypeKind "OBJECT"}}
 {{$hasArguments := gt (.Arguments | len) 0}}
 {{if $hasArguments}}
-// {{capitalize .Name}}QueryArgs are the arguments for the "{{.Name}}" query.
-type {{capitalize .Name}}QueryArgs struct {
+// {{capitalize .Name}}Args are the arguments for the "{{.Name}}" query.
+type {{capitalize .Name}}Args struct {
   {{range .Arguments}} {{.Name | capitalize}} {{.Type}}
   {{end}}
 }
 {{end}}
 // {{capitalize .Name}} {{.Description}}
-func (r *Resolver) {{capitalize .Name}}(ctx context.Context{{if $hasArguments}}, args {{capitalize .Name}}QueryArgs{{end}}) ({{.ReturnType}}, error) {
+func (r *Resolver) {{capitalize .Name}}(ctx context.Context {{- if $hasArguments }}, args {{capitalize .Name}}Args{{- end }} ) ({{.ReturnType}}, error) {
 
   return nil, nil
 }

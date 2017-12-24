@@ -90,8 +90,9 @@ func main() {
 		//	}
 	} else {
 		// save driver type
-		args.LoaderType = "postgres"
+		//args.LoaderType = "graphql"
 		args.Suffix = ".go"
+		args.GraphQL = true
 
 		// Neelance Graphql Generator
 		schemaBytes, err := ioutil.ReadFile(args.GraphQLSchema)

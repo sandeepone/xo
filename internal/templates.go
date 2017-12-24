@@ -65,6 +65,10 @@ func (a *ArgType) ExecuteTemplate(tt TemplateType, name string, sub string, obj 
 	}
 	templateName := fmt.Sprintf("%s%s.go.tpl", loaderType, tt)
 
+	if a.GraphQL {
+		templateName = fmt.Sprintf("%s.go.tpl", tt)
+	}
+
 	// execute template
 	err = a.TemplateSet().Execute(v.Buf, templateName, obj)
 	if err != nil {
