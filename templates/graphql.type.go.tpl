@@ -22,12 +22,7 @@
 // {{capitalize .Name}} {{.Description}}
 func (r *{{.TypeName}}Resolver) {{capitalize .Name}}({{if $hasArguments}}{{template "arguments" .Arguments}}{{end}}) {{.ReturnType}} {
 {{- if eq .ReturnType "graphql.Time" }}
-  t, err := time.Parse(time.RFC3339, r.{{.TypeName}}.{{capitalize .Return}})
-	if err != nil {
-		return graphql.Time{}
-	}
-
-	return graphql.Time{Time: t}
+	return graphql.Time{Time: r.{{.TypeName}}.{{capitalize .Return}}}
 {{- else }}
   return r.{{.TypeName}}.{{capitalize .Return}}
 {{- end }}

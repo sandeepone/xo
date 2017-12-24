@@ -268,22 +268,17 @@ func getFile(args *internal.ArgType, t *internal.TBuf) (*os.File, error) {
 
 	// determine filename
 	var filename = strings.ToLower(t.Name)
-	var bundle = path.Base(filename)
+	//var bundle = path.Base(filename)
 
 	if t.TemplateType.String() == "graphql.type" {
-		//filename = filename + "_type"
 		args.Package = "objects"
 		filename = path.Join(args.Path, "objects/"+filename) + args.Suffix
 	} else if t.TemplateType.String() == "graphql.query" {
-		//filename = filename + "_query"
 		args.Package = "queries"
 		filename = path.Join(args.Path, "queries/"+filename) + args.Suffix
-	} else if t.TemplateType.String() == "graphql.mutation1111" {
-		filename = "services/" + bundle + "/mutation.go"
-		args.Package = bundle
-	} else if t.TemplateType.String() == "graphql.loader1111" {
-		filename = "loaders/" + filename + ".go"
-		args.Package = "loaders"
+	} else if t.TemplateType.String() == "graphql.mutation" {
+		args.Package = "mutations"
+		filename = path.Join(args.Path, "mutations/"+filename) + args.Suffix
 	} else {
 		args.Package = path.Base(args.Path)
 		filename = path.Join(args.Path, filename) + args.Suffix
@@ -386,6 +381,11 @@ func writeTypes(args *internal.ArgType) error {
 		// should only be nil when type == xo
 		if f == nil {
 			continue
+		}
+
+		// if verbose
+		if args.Verbose {
+			fmt.Printf("Generated File Name : [%s] \n", f.Name())
 		}
 
 		// write segment
