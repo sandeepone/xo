@@ -79,6 +79,8 @@ type GqlMethod struct {
 	NReturnType string
 	IsEntry     bool
 	IsNullable  bool
+	IsQuery     bool
+	IsMutation  bool
 }
 
 func NewCodeGen(graphSchema string) *CodeGen {
@@ -192,7 +194,7 @@ func (g *CodeGen) generateType(args *ArgType, tp *introspection.Type) error {
 
 	// if verbose
 	if args.Verbose {
-		//log.Printf("GenerateType [%s] Template Name [%s] - QUERY [%t]", name, templateName, (name == g.queryName))
+		log.Printf("GenerateType [%s] Template Name [%s] - QUERY [%t]", name, templateName, (name == g.queryName))
 	}
 
 	// Move this to a util func (g *CodeGen)
@@ -267,24 +269,44 @@ func (g *CodeGen) generateType(args *ArgType, tp *introspection.Type) error {
 			}
 		}
 	} else if templateType == GraphQLMutationTemplate {
-		//for _, m := range methods {
-		// reset the old methods
-		typeTpl["Methods"] = methods
+		if templateName == "Mutation" {
+			for _, m := range methods {
+				templateName = args.unCapitalise(m.Name)
+				m.NReturnType = strings.TrimSuffix(m.NReturnType, "Resolver")
+				m.IsMutation = true
 
-		templateName = strings.TrimSuffix(templateName, "Input")
-		templateName = strings.TrimSuffix(templateName, "Payload")
+				// override methods to single method in loop
+				typeTpl["Methods"] = append([]GqlMethod{}, m)
 
-		// if verbose
-		if args.Verbose {
-			log.Printf("GenerateMutation [%s] Template Name [%s] MethodName [%s]", name, templateName, "")
+				// if verbose
+				if args.Verbose {
+					log.Printf("GenerateMutation [%s] Template Name [%s] MethodName [%s]", name, templateName, m.Name)
+				}
+
+				// generate type template
+				err := args.ExecuteTemplate(templateType, templateName, tp.Kind(), typeTpl)
+				if err != nil {
+					return err
+				}
+			}
+		} else {
+			// reset the old methods
+			typeTpl["Methods"] = methods
+
+			templateName = strings.TrimSuffix(templateName, "Input")
+			templateName = strings.TrimSuffix(templateName, "Payload")
+
+			// if verbose
+			if args.Verbose {
+				log.Printf("GenerateMutation [%s] Template Name [%s] MethodName [%s]", name, templateName, "")
+			}
+
+			// generate type template
+			err := args.ExecuteTemplate(templateType, templateName, tp.Kind(), typeTpl)
+			if err != nil {
+				return err
+			}
 		}
-
-		// generate type template
-		err := args.ExecuteTemplate(templateType, templateName, tp.Kind(), typeTpl)
-		if err != nil {
-			return err
-		}
-		//}
 	} else {
 		// reset the old methods
 		typeTpl["Methods"] = methods

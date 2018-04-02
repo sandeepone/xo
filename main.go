@@ -349,8 +349,10 @@ func writeTypes(args *internal.ArgType) error {
 
 	out := internal.TBufSlice(args.Generated)
 
-	// sort segments
-	sort.Sort(out)
+	if !args.GraphQL && args.GraphQLSchema == "TEST" {
+		// sort segments
+		sort.Sort(out)
+	}
 
 	// loop, writing in order
 	for _, t := range out {
@@ -385,7 +387,7 @@ func writeTypes(args *internal.ArgType) error {
 
 		// if verbose
 		if args.Verbose {
-			//fmt.Printf("Generated File Name : [%s] \n", f.Name())
+			fmt.Printf("Generated File Name : [%s] \n", f.Name())
 		}
 
 		// write segment
