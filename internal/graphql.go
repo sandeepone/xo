@@ -4,8 +4,8 @@ import (
 	"log"
 	"strings"
 
-	"github.com/neelance/graphql-go"
-	"github.com/neelance/graphql-go/introspection"
+	"github.com/graph-gophers/graphql-go"
+	"github.com/graph-gophers/graphql-go/introspection"
 )
 
 type typeConfig struct {
