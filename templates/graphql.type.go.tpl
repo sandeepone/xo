@@ -4,6 +4,8 @@
       {{capitalize .Name}} string `json:"{{.Name}}"`
     {{- else if eq .FieldType "graphql.Time" }}
       {{capitalize .Name}} time.Time `json:"{{.Name}}"`
+    {{- else if eq .Name "nid" }}
+    // Nid Field not required in object- alias of ID
     {{- else }}
       {{capitalize .Name}} {{.FieldType}} `json:"{{.Name}}"`
     {{- end }}
@@ -31,6 +33,8 @@
             	return graphql.Time{Time: r.{{.TypeName}}.{{capitalize .Return}}}
             {{- else if eq .Return "pass" "password" }}
               return "***"
+            {{- else if eq .Return "nid" "Nid" }}
+              return r.{{.TypeName}}.ID
             {{- else }}
               return r.{{.TypeName}}.{{capitalize .Return}}
             {{- end }}

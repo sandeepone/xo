@@ -19,7 +19,7 @@
             }
         {{- end }}
 
-        // {{capitalize .Name}} {{.Description}} - {{.ReturnType}} - {{.IsNullable}}
+        // {{capitalize .Name}} {{.Description}} - {{.ReturnType}}
         func (r *{{.TypeName}}Resolver) {{capitalize .Name}}(ctx context.Context {{- if $hasArguments }}, args {{capitalize .Name}}Args{{- end }} ) (*objects.{{.NReturnType}}, error) {
 
           return nil, nil
