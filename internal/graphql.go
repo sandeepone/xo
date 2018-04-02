@@ -56,6 +56,7 @@ type GqlField struct {
 	Name        string
 	Description string
 	FieldType   string
+	NFieldType  string
 	TypeKind    string
 	TypeName    string
 	IsEntry     bool
@@ -81,7 +82,7 @@ type GqlMethod struct {
 }
 
 func NewCodeGen(graphSchema string) *CodeGen {
-	return &CodeGen{graphSchema, "", ""}
+	return &CodeGen{graphSchema, "Mutation", "Query"}
 }
 
 func (g *CodeGen) Generate(args *ArgType) error {
@@ -102,6 +103,11 @@ func (g *CodeGen) Generate(args *ArgType) error {
 		g.queryName = g.returnString(ins.QueryType().Name())
 	}
 
+	// if verbose
+	if args.Verbose {
+		log.Printf("Type MUTATION [%s] - QUERY [%s]", g.mutationName, g.queryName)
+	}
+
 	var entryPoint = false
 
 	for _, qlType := range ins.Types() {
@@ -118,7 +124,7 @@ func (g *CodeGen) Generate(args *ArgType) error {
 			entryPoint = true
 		}
 
-		//log.Printf("Generating Go code for %s %s", qlType.Kind(), name)
+		log.Printf("Generating Go code for %s %s", qlType.Kind(), name)
 
 		err = g.generateType(args, qlType)
 		if err != nil {
@@ -173,12 +179,20 @@ func (g *CodeGen) generateType(args *ArgType, tp *introspection.Type) error {
 		templateType = GraphQLMutationTemplate
 	}
 
+	if tp.Kind() == "INPUT_OBJECT" {
+		templateType = GraphQLMutationTemplate
+	}
+
+	if tp.Kind() == "OBJECT" && strings.HasSuffix(templateName, "Payload") {
+		templateType = GraphQLMutationTemplate
+	}
+
 	templateName = strings.TrimSuffix(name, "Edge")
 	templateName = strings.TrimSuffix(templateName, "Connection")
 
 	// if verbose
 	if args.Verbose {
-		log.Printf("GenerateType [%s] Template Name [%s] - QUERY [%t]", name, templateName, (name == g.queryName))
+		//log.Printf("GenerateType [%s] Template Name [%s] - QUERY [%t]", name, templateName, (name == g.queryName))
 	}
 
 	// Move this to a util func (g *CodeGen)
@@ -253,10 +267,24 @@ func (g *CodeGen) generateType(args *ArgType, tp *introspection.Type) error {
 			}
 		}
 	} else if templateType == GraphQLMutationTemplate {
+		//for _, m := range methods {
+		// reset the old methods
+		typeTpl["Methods"] = methods
+
+		templateName = strings.TrimSuffix(templateName, "Input")
+		templateName = strings.TrimSuffix(templateName, "Payload")
+
 		// if verbose
 		if args.Verbose {
 			log.Printf("GenerateMutation [%s] Template Name [%s] MethodName [%s]", name, templateName, "")
 		}
+
+		// generate type template
+		err := args.ExecuteTemplate(templateType, templateName, tp.Kind(), typeTpl)
+		if err != nil {
+			return err
+		}
+		//}
 	} else {
 		// reset the old methods
 		typeTpl["Methods"] = methods
@@ -281,6 +309,7 @@ func (g *CodeGen) generateInputValue(args *ArgType, ip *introspection.InputValue
 		TypeKind:    tp.Kind(),
 		TypeName:    name,
 		FieldType:   fieldTypeName,
+		NFieldType:  strings.Replace(fieldTypeName, "*", "", 1),
 		IsEntry:     g.isEntryPoint(name),
 	}
 
@@ -304,6 +333,7 @@ func (g *CodeGen) generateField(args *ArgType, fp *introspection.Field, tp *intr
 		Name:        name,
 		Description: args.removeLineBreaks(g.returnString(fp.Description())),
 		FieldType:   fieldTypeName,
+		NFieldType:  strings.Replace(fieldTypeName, "*", "", 1),
 		TypeKind:    tp.Kind(),
 		TypeName:    typeName,
 		IsEntry:     g.isEntryPoint(name),

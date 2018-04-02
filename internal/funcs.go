@@ -56,7 +56,7 @@ func (a *ArgType) NewTemplateFuncs() template.FuncMap {
 		"toSnakeCase":        xstrings.ToSnakeCase,
 		"toSwapCase":         xstrings.SwapCase,
 		"ucfirst":            xstrings.FirstRuneToUpper,
-		"lcfist":             xstrings.FirstRuneToLower,
+		"lcfirst":            xstrings.FirstRuneToLower,
 		"toReverse":          xstrings.Reverse,
 		"toTranslate":        xstrings.Translate,
 		"toDelete":           xstrings.Delete,
