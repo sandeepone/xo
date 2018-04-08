@@ -8,137 +8,309 @@ import (
 	"github.com/graph-gophers/graphql-go/introspection"
 )
 
-type typeConfig struct {
-	ignore bool
-	goType string
-}
-
-var (
-	internalTypeConfig = map[string]typeConfig{
-		"SCALAR": typeConfig{
-			true,
-			"",
-		},
-		"Boolean": typeConfig{
-			true,
-			"bool",
-		},
-		"Float": typeConfig{
-			true,
-			"float64",
-		},
-		"Int": typeConfig{
-			true,
-			"int32",
-		},
-		"ID": typeConfig{
-			true,
-			"graphql.ID",
-		},
-		"Time": typeConfig{
-			true,
-			"graphql.Time",
-		},
-		"String": typeConfig{
-			true,
-			"string",
-		},
-	}
+const (
+	gqlSCALAR       = "SCALAR"
+	gqlINTERFACE    = "INTERFACE"
+	gqlINPUT_OBJECT = "INPUT_OBJECT"
+	gqlUNION        = "UNION"
+	gqlLIST         = "LIST"
+	gqlOBJECT       = "OBJECT"
+	gqlENUM         = "ENUM"
+	gqlDIRECTIVE    = "DIRECTIVE"
+	gqlID           = "ID"
+	gqlQuery        = "Query"
+	gqlMutation     = "Mutation"
 )
 
+var KnownGQLTypes = map[string]bool{
+	"__Directive":         true,
+	"__DirectiveLocation": true,
+	"__EnumValue":         true,
+	"__Field":             true,
+	"__InputValue":        true,
+	"__Schema":            true,
+	"__Type":              true,
+	"__TypeKind":          true,
+	"LIST":                true,
+	"String":              true,
+	"Float":               true,
+	"ID":                  true,
+	"Int":                 true,
+	"Boolean":             true,
+	"Time":                true,
+}
+
+var KnownGoTypes = map[string]bool{
+	"string":  true,
+	"bool":    true,
+	"float32": true,
+	"float64": true,
+	"int":     true,
+	"int32":   true,
+	"int64":   true,
+}
+
 type CodeGen struct {
-	graphSchema  string
+	rawSchema    string
 	mutationName string
 	queryName    string
+
+	schema *graphql.Schema
 }
 
-type GqlField struct {
+type TypeDef struct {
 	Name        string
 	Description string
-	FieldType   string
-	NFieldType  string
-	TypeKind    string
-	TypeName    string
-	IsEntry     bool
-	IsNullable  bool
-}
+	GQLType     string
+	Fields      []*FieldDef
 
-type FieldArgument struct {
-	Name string
-	Type string
-}
-
-type GqlMethod struct {
-	Name        string
-	Description string
-	TypeKind    string
-	TypeName    string
-	Arguments   []FieldArgument
-	Return      string
-	ReturnType  string
-	NReturnType string
-	IsEntry     bool
-	IsNullable  bool
 	IsQuery     bool
 	IsMutation  bool
+	IsScalar    bool
+	IsInterface bool
+	IsInput     bool
+
+	gqlType *introspection.Type
 }
 
-func NewCodeGen(graphSchema string) *CodeGen {
-	return &CodeGen{graphSchema, "Mutation", "Query"}
+type Typ struct {
+	GoType  string
+	GQLType string
+
+	Type   *Typ
+	Values []string
+
+	IsEntry     bool
+	IsNullable  bool
+	IsInterface bool
+	IsInput     bool
+
+	IsUserDefined bool // does the type exist in the typemap
+
+	gqlType *introspection.Type
+}
+
+type FieldDef struct {
+	Name        string
+	Parent      string
+	Description string
+
+	Type *Typ
+	Args []*FieldDef
+
+	IsInterface bool
+	IsInput     bool
+
+	gqlField *introspection.Field
+}
+
+func NewType(t *introspection.Type) *TypeDef {
+
+	tp := &TypeDef{
+		Name:        pts(t.Name()),
+		Description: pts(t.Description()),
+		Fields:      []*FieldDef{},
+		gqlType:     t,
+	}
+
+	/**
+	 * union & input object types do not have fields
+	 * so we ignore it to avoid nil pointer dereference error
+	 * for input object type we create fields from InputFields instead
+	 */
+	if t.Kind() != gqlUNION && t.Kind() != gqlINPUT_OBJECT {
+		for _, fld := range *t.Fields(nil) {
+			f := NewField(fld)
+			f.Parent = tp.Name
+			f.IsInterface = t.Kind() == gqlINTERFACE
+			tp.Fields = append(tp.Fields, f)
+
+			// if tp.Name == "User" {
+			// 	log.Printf("Field [%s] for [%s] - %v", f.Name, tp.Name, tp.Name)
+			// }
+		}
+	} else if t.Kind() == gqlINPUT_OBJECT {
+		for _, input := range *t.InputFields() {
+			f := newField(input.Name(), input.Description(), input.Type())
+			f.IsInput = t.Kind() == gqlINPUT_OBJECT
+			f.Parse()
+			tp.Fields = append(tp.Fields, f)
+		}
+	}
+
+	return tp
+}
+
+func newField(name string, desc *string, typ *introspection.Type) *FieldDef {
+	return &FieldDef{
+		Name:        fieldName(name),
+		Description: pts(desc),
+		Type: &Typ{
+			IsNullable: true,
+			gqlType:    typ,
+		},
+	}
+}
+
+func NewField(t *introspection.Field) *FieldDef {
+
+	fld := newField(t.Name(), t.Description(), t.Type())
+	fld.Parse()
+
+	// parse arguments (i.e., interface function)
+	for _, arg := range t.Args() {
+		argFld := newField(arg.Name(), arg.Description(), arg.Type())
+		argFld.Parse()
+		fld.Args = append(fld.Args, argFld)
+	}
+
+	return fld
+}
+
+func (f *FieldDef) Parse() {
+
+	tp := f.Type.gqlType
+	td := f.Type
+
+FindGoType:
+	td.gqlType = tp
+	if tp.Kind() == "NON_NULL" {
+		td.IsNullable = false
+		tp = tp.OfType()
+	}
+
+	if tp.Kind() == "LIST" {
+		td.GoType = "[]"
+		td.GQLType = "[]"
+
+		td.Type = &Typ{
+			IsNullable: true,
+		}
+
+		tp = tp.OfType()
+		td = td.Type
+		goto FindGoType
+	}
+
+	switch *tp.Name() {
+	case "String":
+		td.GoType = "string"
+		td.GQLType = "string"
+	case "Int":
+		td.GoType = "int32"
+		td.GQLType = "int32"
+	case "Float":
+		td.GoType = "float32"
+		td.GQLType = "float32"
+	case "ID":
+		// TODO - shouldn't we use graphql.ID type for `ID` fields
+		// because it may not work for query and mutation calls?
+		td.GoType = "string"
+		td.GQLType = "graphql.ID"
+	case "Boolean":
+		td.GoType = "bool"
+		td.GQLType = "bool"
+	case "Time":
+		td.GoType = "time.Time"
+		td.GQLType = "graphql.Time"
+	default:
+		if tp.Kind() == gqlENUM {
+			td.GoType = "string"
+			td.GQLType = "string"
+		} else {
+			td.GoType = pts(tp.Name())
+			td.GQLType = pts(tp.Name()) + "Resolver"
+			td.IsUserDefined = true
+		}
+	}
+	return
+}
+
+func NewCodeGen(schema string) *CodeGen {
+	return &CodeGen{schema, "Mutation", "Query", nil}
+}
+
+func (g *CodeGen) Parse() error {
+	schema, err := graphql.ParseSchema(g.rawSchema, nil)
+	g.schema = schema
+	return err
 }
 
 func (g *CodeGen) Generate(args *ArgType) error {
-	graphSchema := g.graphSchema
 
-	sch, err := graphql.ParseSchema(graphSchema, nil)
-	if err != nil {
-		return err
+	g.Parse()
+
+	inspect := g.schema.Inspect()
+
+	if inspect.MutationType() != nil {
+		g.mutationName = pts(inspect.MutationType().Name())
 	}
 
-	ins := sch.Inspect()
-
-	if ins.MutationType() != nil {
-		g.mutationName = g.returnString(ins.MutationType().Name())
+	if inspect.QueryType() != nil {
+		g.queryName = pts(inspect.QueryType().Name())
 	}
 
-	if ins.QueryType() != nil {
-		g.queryName = g.returnString(ins.QueryType().Name())
+	types := []*TypeDef{}
+
+	resType := &TypeDef{
+		Name:   "GqlResolver",
+		Fields: []*FieldDef{},
 	}
 
-	// if verbose
-	if args.Verbose {
-		log.Printf("Type MUTATION [%s] - QUERY [%s]", g.mutationName, g.queryName)
-	}
-
-	var entryPoint = false
-
-	for _, qlType := range ins.Types() {
-		name := *qlType.Name()
-		if strings.HasPrefix(name, "_") {
+	for _, typ := range inspect.Types() {
+		if KnownGQLTypes[*typ.Name()] {
 			continue
 		}
 
-		if internalTypeConfig[name].ignore {
-			continue
-		}
+		//log.Printf("Generating Go code for %s %s", typ.Kind(), pts(typ.Name()))
 
-		if g.isEntryPoint(name) {
-			entryPoint = true
-		}
+		switch typ.Kind() {
+		case gqlOBJECT:
+			gtp := NewType(typ)
+			typName := pts(typ.Name())
 
-		log.Printf("Generating Go code for %s %s", qlType.Kind(), name)
+			// save Query & Mutation definitions to be generated later
+			if typName == gqlQuery || typName == gqlMutation {
+				resType.IsQuery = typName == gqlQuery
+				resType.IsMutation = typName == gqlMutation
 
-		err = g.generateType(args, qlType)
-		if err != nil {
-			return err
+				gtp.IsQuery = typName == gqlQuery
+				gtp.IsMutation = typName == gqlMutation
+
+				for _, value := range gtp.Fields {
+					//resType.Fields[key] = value
+					resType.Fields = append(resType.Fields, value)
+				}
+			} else {
+				//log.Printf("Generating Go code for %s %s", typ.Kind(), typName)
+			}
+
+			types = append(types, gtp)
+		case gqlSCALAR:
+			gtp := NewType(typ)
+			gtp.IsScalar = true
+			//types = append(types, gtp)
+		case gqlINTERFACE:
+			gtp := NewType(typ)
+			gtp.IsInterface = true
+			types = append(types, gtp)
+		case gqlENUM:
+		case gqlUNION:
+		case gqlINPUT_OBJECT:
+			gtp := NewType(typ)
+			gtp.IsInput = true
+			//types = append(types, gtp)
+		default:
+			log.Printf("Unknown graphql type ", *typ.Name(), ":", typ.Kind())
 		}
 	}
 
-	// Generate entry point
-	if entryPoint {
-		err := g.generateEntryPoint(args)
-		if err != nil {
-			return err
+	for _, t := range types {
+		if !t.IsInterface && !t.IsQuery && !t.IsMutation {
+			// Generate Models
+			if err := g.generateType(args, t); err != nil {
+				return err
+			}
 		}
 	}
 
@@ -152,274 +324,248 @@ func (g *CodeGen) returnString(strPtr *string) string {
 	return ""
 }
 
-func (g *CodeGen) generateEntryPoint(args *ArgType) error {
-	typeTpl := map[string]interface{}{
-		"Kind":            "RESOLVER",
-		"TypeName":        "Resolver",
-		"TypeDescription": "Resolver is the main resolver for all queries",
-	}
+func (g *CodeGen) generateType(args *ArgType, tp *TypeDef) error {
 
-	// generate query type template
-	err := args.ExecuteTemplate(GraphQLTypeTemplate, "default", "RESOLVER", typeTpl)
+	log.Printf("Generating Go code for %s %s", gqlOBJECT, tp.Name)
+
+	templateType := GraphQLTypeTemplate
+	templateName := tp.Name
+
+	templateName = strings.TrimSuffix(templateName, "Edge")
+	templateName = strings.TrimSuffix(templateName, "Connection")
+
+	// // if verbose
+	// if args.Verbose {
+	// 	log.Printf("GenerateType [%s] Template Name [%s]", name, templateName)
+	// }
+
+	// for _, f := range tp.Fields {
+	// 	// if t.Name == "User" {
+	// 	// 	log.Printf("Field [%s] for [%s] - Parent %s", f.Name, t.Name, f.Parent)
+	// 	// }
+	// }
+
+	// generate type template
+	err := args.ExecuteTemplate(templateType, templateName, gqlOBJECT, tp)
 	if err != nil {
 		return err
 	}
 
 	return nil
-}
+	// name := *tp.Name()
+	// templateType := GraphQLTypeTemplate
+	// templateName := name
 
-func (g *CodeGen) generateType(args *ArgType, tp *introspection.Type) error {
-	name := *tp.Name()
-	templateType := GraphQLTypeTemplate
-	templateName := name
+	// if name == g.queryName {
+	// 	templateType = GraphQLQueryTemplate
+	// }
 
-	if name == g.queryName {
-		templateType = GraphQLQueryTemplate
-	}
+	// if name == g.mutationName {
+	// 	templateType = GraphQLMutationTemplate
+	// }
 
-	if name == g.mutationName {
-		templateType = GraphQLMutationTemplate
-	}
+	// if tp.Kind() == "INPUT_OBJECT" {
+	// 	templateType = GraphQLMutationTemplate
+	// }
 
-	if tp.Kind() == "INPUT_OBJECT" {
-		templateType = GraphQLMutationTemplate
-	}
+	// if tp.Kind() == "OBJECT" && strings.HasSuffix(templateName, "Payload") {
+	// 	templateType = GraphQLMutationTemplate
+	// }
 
-	if tp.Kind() == "OBJECT" && strings.HasSuffix(templateName, "Payload") {
-		templateType = GraphQLMutationTemplate
-	}
+	// templateName = strings.TrimSuffix(name, "Edge")
+	// templateName = strings.TrimSuffix(templateName, "Connection")
 
-	templateName = strings.TrimSuffix(name, "Edge")
-	templateName = strings.TrimSuffix(templateName, "Connection")
+	// // if verbose
+	// if args.Verbose {
+	// 	log.Printf("GenerateType [%s] Template Name [%s] - QUERY [%t]", name, templateName, (name == g.queryName))
+	// }
 
-	// if verbose
-	if args.Verbose {
-		log.Printf("GenerateType [%s] Template Name [%s] - QUERY [%t]", name, templateName, (name == g.queryName))
-	}
+	// // Move this to a util func (g *CodeGen)
+	// var ifields []*introspection.Field
+	// if tp.Fields(&struct{ IncludeDeprecated bool }{true}) != nil {
+	// 	ifields = *tp.Fields(&struct{ IncludeDeprecated bool }{true})
+	// }
 
-	// Move this to a util func (g *CodeGen)
-	var ifields []*introspection.Field
-	if tp.Fields(&struct{ IncludeDeprecated bool }{true}) != nil {
-		ifields = *tp.Fields(&struct{ IncludeDeprecated bool }{true})
-	}
+	// fields := make([]GqlField, len(ifields))
+	// methods := make([]GqlMethod, len(ifields))
 
-	fields := make([]GqlField, len(ifields))
-	methods := make([]GqlMethod, len(ifields))
+	// for i, fp := range ifields {
+	// 	fieldCode, methodCode := g.generateField(args, fp, tp)
+	// 	fields[i] = fieldCode
+	// 	methods[i] = methodCode
+	// }
 
-	for i, fp := range ifields {
-		fieldCode, methodCode := g.generateField(args, fp, tp)
-		fields[i] = fieldCode
-		methods[i] = methodCode
-	}
+	// var inputFields []GqlField
+	// if tp.InputFields() != nil {
+	// 	for _, ip := range *tp.InputFields() {
+	// 		inputField := g.generateInputValue(args, ip, tp)
+	// 		inputFields = append(inputFields, inputField)
+	// 	}
+	// }
 
-	var inputFields []GqlField
-	if tp.InputFields() != nil {
-		for _, ip := range *tp.InputFields() {
-			inputField := g.generateInputValue(args, ip, tp)
-			inputFields = append(inputFields, inputField)
-		}
-	}
+	// possibleTypes := []string{}
+	// if tp.PossibleTypes() != nil {
+	// 	for _, tp := range *tp.PossibleTypes() {
+	// 		possibleTypes = append(possibleTypes, *tp.Name())
+	// 	}
+	// }
 
-	possibleTypes := []string{}
-	if tp.PossibleTypes() != nil {
-		for _, tp := range *tp.PossibleTypes() {
-			possibleTypes = append(possibleTypes, *tp.Name())
-		}
-	}
+	// enumValues := []string{}
+	// if tp.EnumValues(&struct{ IncludeDeprecated bool }{true}) != nil {
+	// 	for _, value := range *tp.EnumValues(&struct{ IncludeDeprecated bool }{true}) {
+	// 		enumValues = append(enumValues, value.Name())
+	// 	}
+	// }
 
-	enumValues := []string{}
-	if tp.EnumValues(&struct{ IncludeDeprecated bool }{true}) != nil {
-		for _, value := range *tp.EnumValues(&struct{ IncludeDeprecated bool }{true}) {
-			enumValues = append(enumValues, value.Name())
-		}
-	}
+	// typeTpl := map[string]interface{}{
+	// 	"Kind":            tp.Kind(),
+	// 	"PossibleTypes":   possibleTypes,
+	// 	"EnumValues":      enumValues,
+	// 	"TypeName":        name,
+	// 	"TypeDescription": args.removeLineBreaks(g.returnString(tp.Description())),
+	// 	"Fields":          fields,
+	// 	"InputFields":     inputFields,
+	// 	"Methods":         methods,
+	// 	"IsEntry":         g.isEntryPoint(name),
+	// 	"IsScalar":        tp.Kind() == "SCALAR",
+	// 	"IsInterface":     tp.Kind() == "INTERFACE",
+	// 	"IsInput":         tp.Kind() == "INPUT_OBJECT",
+	// 	"IsResolver":      tp.Kind() == "RESOLVER",
+	// }
 
-	typeTpl := map[string]interface{}{
-		"Kind":            tp.Kind(),
-		"PossibleTypes":   possibleTypes,
-		"EnumValues":      enumValues,
-		"TypeName":        name,
-		"TypeDescription": args.removeLineBreaks(g.returnString(tp.Description())),
-		"Fields":          fields,
-		"InputFields":     inputFields,
-		"Methods":         methods,
-		"IsEntry":         g.isEntryPoint(name),
-	}
+	// //log.Printf("TYPEKIND [%s]", tp.Kind())
 
-	if templateType == GraphQLQueryTemplate {
-		for _, m := range methods {
-			templateName = args.unCapitalise(m.ReturnType)
-			templateName = strings.TrimPrefix(templateName, "*")
+	// if templateType == GraphQLQueryTemplate {
+	// 	for _, m := range methods {
+	// 		templateName = args.unCapitalise(m.ReturnType)
+	// 		templateName = strings.TrimPrefix(templateName, "*")
 
-			templateName = strings.TrimSuffix(templateName, "Resolver")
-			templateName = strings.TrimSuffix(templateName, "Connection")
+	// 		templateName = strings.TrimSuffix(templateName, "Resolver")
+	// 		templateName = strings.TrimSuffix(templateName, "Connection")
 
-			// override methods to single method in loop
-			typeTpl["Methods"] = append([]GqlMethod{}, m)
+	// 		// override methods to single method in loop
+	// 		typeTpl["Methods"] = append([]GqlMethod{}, m)
+	// 		m.IsQuery = true
 
-			// if verbose
-			if args.Verbose {
-				log.Printf("GenerateQuery [%s] Template Name [%s] MethodName [%s]", name, templateName, m.Name)
-			}
+	// 		// if verbose
+	// 		if args.Verbose {
+	// 			log.Printf("GenerateQuery [%s] Template Name [%s] MethodName [%s]", name, templateName, m.Name)
+	// 		}
 
-			// generate query template
-			err := args.ExecuteTemplate(templateType, templateName, tp.Kind(), typeTpl)
-			if err != nil {
-				return err
-			}
-		}
-	} else if templateType == GraphQLMutationTemplate {
-		if templateName == "Mutation" {
-			for _, m := range methods {
-				templateName = args.unCapitalise(m.Name)
-				m.NReturnType = strings.TrimSuffix(m.NReturnType, "Resolver")
-				m.IsMutation = true
+	// 		// generate query template
+	// 		err := args.ExecuteTemplate(templateType, templateName, tp.Kind(), typeTpl)
+	// 		if err != nil {
+	// 			return err
+	// 		}
+	// 	}
+	// } else if templateType == GraphQLMutationTemplate {
+	// 	if templateName == "Mutation" {
+	// 		for _, m := range methods {
+	// 			templateName = args.unCapitalise(m.Name)
+	// 			m.NReturnType = strings.TrimSuffix(m.NReturnType, "Resolver")
+	// 			m.IsMutation = true
 
-				// override methods to single method in loop
-				typeTpl["Methods"] = append([]GqlMethod{}, m)
+	// 			// override methods to single method in loop
+	// 			typeTpl["Methods"] = append([]GqlMethod{}, m)
 
-				// if verbose
-				if args.Verbose {
-					log.Printf("GenerateMutation [%s] Template Name [%s] MethodName [%s]", name, templateName, m.Name)
-				}
+	// 			// if verbose
+	// 			if args.Verbose {
+	// 				log.Printf("GenerateMutation [%s] Template Name [%s] MethodName [%s]", name, templateName, m.Name)
+	// 			}
 
-				// generate type template
-				err := args.ExecuteTemplate(templateType, templateName, tp.Kind(), typeTpl)
-				if err != nil {
-					return err
-				}
-			}
-		} else {
-			// reset the old methods
-			typeTpl["Methods"] = methods
+	// 			// generate type template
+	// 			err := args.ExecuteTemplate(templateType, templateName, tp.Kind(), typeTpl)
+	// 			if err != nil {
+	// 				return err
+	// 			}
+	// 		}
+	// 	} else {
+	// 		// reset the old methods
+	// 		typeTpl["Methods"] = methods
 
-			templateName = strings.TrimSuffix(templateName, "Input")
-			templateName = strings.TrimSuffix(templateName, "Payload")
+	// 		templateName = strings.TrimSuffix(templateName, "Input")
+	// 		templateName = strings.TrimSuffix(templateName, "Payload")
 
-			// if verbose
-			if args.Verbose {
-				log.Printf("GenerateMutation [%s] Template Name [%s] MethodName [%s]", name, templateName, "")
-			}
+	// 		// if verbose
+	// 		if args.Verbose {
+	// 			log.Printf("GenerateMutation [%s] Template Name [%s] MethodName [%s]", name, templateName, "")
+	// 		}
 
-			// generate type template
-			err := args.ExecuteTemplate(templateType, templateName, tp.Kind(), typeTpl)
-			if err != nil {
-				return err
-			}
-		}
-	} else {
-		// reset the old methods
-		typeTpl["Methods"] = methods
+	// 		// generate type template
+	// 		err := args.ExecuteTemplate(templateType, templateName, tp.Kind(), typeTpl)
+	// 		if err != nil {
+	// 			return err
+	// 		}
+	// 	}
+	// } else {
+	// 	// reset the old methods
+	// 	typeTpl["Methods"] = methods
 
-		// generate type template
-		err := args.ExecuteTemplate(templateType, templateName, tp.Kind(), typeTpl)
-		if err != nil {
-			return err
-		}
-	}
-
-	return nil
-}
-
-func (g *CodeGen) generateInputValue(args *ArgType, ip *introspection.InputValue, tp *introspection.Type) GqlField {
-	name := ip.Name()
-	fieldTypeName := g.getTypeName(ip.Type(), false)
-
-	return GqlField{
-		Name:        name,
-		Description: args.removeLineBreaks(g.returnString(ip.Description())),
-		TypeKind:    tp.Kind(),
-		TypeName:    name,
-		FieldType:   fieldTypeName,
-		NFieldType:  strings.Replace(fieldTypeName, "*", "", 1),
-		IsEntry:     g.isEntryPoint(name),
-	}
-
-}
-
-func (g *CodeGen) generateField(args *ArgType, fp *introspection.Field, tp *introspection.Type) (GqlField, GqlMethod) {
-	name := fp.Name()
-	typeName := *tp.Name()
-
-	fieldTypeName := g.getTypeName(fp.Type(), false)
-	fieldArguments := make([]FieldArgument, 0, len(fp.Args()))
-
-	for _, field := range fp.Args() {
-		fieldArguments = append(fieldArguments, FieldArgument{
-			Name: field.Name(),
-			Type: g.getTypeName(field.Type(), true),
-		})
-	}
-
-	gqlField := GqlField{
-		Name:        name,
-		Description: args.removeLineBreaks(g.returnString(fp.Description())),
-		FieldType:   fieldTypeName,
-		NFieldType:  strings.Replace(fieldTypeName, "*", "", 1),
-		TypeKind:    tp.Kind(),
-		TypeName:    typeName,
-		IsEntry:     g.isEntryPoint(name),
-		IsNullable:  g.isNullable(fp),
-	}
-
-	gqlMethod := GqlMethod{
-		Name:        name,
-		Description: args.removeLineBreaks(g.returnString(fp.Description())),
-		TypeKind:    tp.Kind(),
-		TypeName:    typeName,
-		Arguments:   fieldArguments,
-		Return:      name,
-		ReturnType:  fieldTypeName,
-		NReturnType: strings.Replace(fieldTypeName, "*", "", 1),
-		IsEntry:     g.isEntryPoint(typeName),
-		IsNullable:  g.isNullable(fp),
-	}
-
-	return gqlField, gqlMethod
+	// 	// generate type template
+	// 	err := args.ExecuteTemplate(templateType, templateName, tp.Kind(), typeTpl)
+	// 	if err != nil {
+	// 		return err
+	// 	}
+	// }
 }
 
 func (g *CodeGen) getTypeName(tp *introspection.Type, input bool) (typ string) {
-check:
-	if tp.Kind() == "NON_NULL" {
-		tp = tp.OfType()
-	} else {
-		typ = typ + "*"
-	}
+	// check:
+	// 	if tp.Kind() == "NON_NULL" {
+	// 		tp = tp.OfType()
+	// 	} else {
+	// 		typ = typ + "*"
+	// 	}
 
-	if tp.Kind() == "LIST" {
-		tp = tp.OfType()
-		typ = typ + "[]"
-		goto check
-	}
+	// 	if tp.Kind() == "LIST" {
+	// 		tp = tp.OfType()
+	// 		typ = typ + "[]"
+	// 		goto check
+	// 	}
 
-	name := tp.Name()
-	if val, ok := internalTypeConfig[*name]; ok {
-		return typ + val.goType
-	}
+	// 	name := tp.Name()
+	// 	if val, ok := internalTypeConfig[*name]; ok {
+	// 		return typ + val.goType
+	// 	}
 
-	if tp.Kind() == "ENUM" {
-		typ = typ + *name
-	} else if tp.Kind() != "INPUT_OBJECT" {
-		if len(typ) > 0 {
-			if typ[len(typ)-1] != '*' {
-				typ = typ + "*"
-			}
-		} else if tp.Kind() != "SCALAR" {
-			typ = "*"
-		}
-		typ = typ + *name + "Resolver"
-	} else {
-		typ = typ + *name
-	}
+	// 	if tp.Kind() == "ENUM" {
+	// 		typ = typ + *name
+	// 	} else if tp.Kind() != "INPUT_OBJECT" {
+	// 		if len(typ) > 0 {
+	// 			if typ[len(typ)-1] != '*' {
+	// 				typ = typ + "*"
+	// 			}
+	// 		} else if tp.Kind() != "SCALAR" {
+	// 			typ = "*"
+	// 		}
+	// 		typ = typ + *name + "Resolver"
+	// 	} else {
+	// 		typ = typ + *name
+	// 	}
 
-	if typ[0] != '*' && tp.Kind() == "INPUT_OBJECT" {
-		typ = "*" + typ
-	}
+	// 	if typ[0] != '*' && tp.Kind() == "INPUT_OBJECT" {
+	// 		typ = "*" + typ
+	// 	}
 
 	return
 }
 
-func (g *CodeGen) isNullable(fp *introspection.Field) bool {
+func (g *CodeGen) isEntryPoint(a string) bool {
+	return a == g.mutationName || a == g.queryName
+}
+
+// Helper functions
+
+func fieldName(name string) string {
+	//name = upperFirst(name)
+	if name == "Id" || name == "id" || name == "ID" {
+		name = "ID"
+	}
+
+	return name
+}
+
+func isNullable(fp *introspection.Field) bool {
 	if fp.Type().Kind() == "NON_NULL" {
 		return false
 	}
@@ -427,6 +573,54 @@ func (g *CodeGen) isNullable(fp *introspection.Field) bool {
 	return true
 }
 
-func (g *CodeGen) isEntryPoint(a string) bool {
-	return a == g.mutationName || a == g.queryName
+func pts(s *string) string {
+	if s == nil {
+		return ""
+	}
+
+	return *s
+}
+
+func gqlReturnType(t *Typ, mode, fieldName, pkg string) string {
+	var r string
+
+	if mode == "struct" || mode == "argStruct" {
+		r = t.GoType
+
+		ok := KnownGoTypes[t.GoType]
+		if !ok {
+			r = t.GQLType
+		}
+	} else {
+		r = t.GQLType
+	}
+
+	if mode == "struct" {
+		ok := KnownGoTypes[t.GoType]
+		if t.IsNullable && t.GQLType != "[]" && !ok {
+			r = "*" + r
+		}
+	} else {
+		if t.IsNullable {
+			r = "*" + r
+		}
+	}
+
+	// Special case for pageInfo - ugly hack
+	if (mode == "struct" || mode == "resolver") && fieldName == "pageInfo" {
+		r = "*" + r
+	}
+
+	if t.Type == nil {
+		return r
+	}
+
+	r += gqlReturnType(t.Type, mode, fieldName, pkg)
+
+	// Special case for edges - ugly hack
+	if mode == "struct" && fieldName == "edges" {
+		r = "*" + r
+	}
+
+	return r
 }

@@ -363,11 +363,6 @@ func writeTypes(args *internal.ArgType) error {
 			continue
 		}
 
-		// skip when in Graphql field/method
-		if t.TemplateType == internal.GraphQLFieldTemplate || t.TemplateType == internal.GraphQLMethodTemplate {
-			continue
-		}
-
 		// check if generated template is only whitespace/empty
 		bufStr := strings.TrimSpace(t.Buf.String())
 		if len(bufStr) == 0 {
