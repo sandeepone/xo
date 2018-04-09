@@ -70,6 +70,7 @@ type TypeDef struct {
 	IsScalar    bool
 	IsInterface bool
 	IsInput     bool
+	IsModel     bool
 
 	gqlType *introspection.Type
 }
@@ -100,8 +101,9 @@ type FieldDef struct {
 	Type *Typ
 	Args []*FieldDef
 
-	IsInterface bool
-	IsInput     bool
+	IsInterface   bool
+	IsInput       bool
+	IsUserDefined bool
 
 	gqlField *introspection.Field
 }
@@ -122,15 +124,20 @@ func NewType(t *introspection.Type) *TypeDef {
 	 * for input object type we create fields from InputFields instead
 	 */
 	if t.Kind() != gqlUNION && t.Kind() != gqlINPUT_OBJECT {
-		for _, fld := range *t.Fields(nil) {
-			f := NewField(fld)
-			f.Parent = tp.Name
-			f.IsInterface = t.Kind() == gqlINTERFACE
-			tp.Fields = append(tp.Fields, f)
+		// Get Depreceated fields also
+		fd := &struct{ IncludeDeprecated bool }{true}
 
-			// if tp.Name == "User" {
-			// 	log.Printf("Field %v", t)
-			// }
+		if t.Fields(fd) != nil {
+			for _, fld := range *t.Fields(fd) {
+				f := NewField(fld)
+				f.Parent = tp.Name
+				f.IsInterface = t.Kind() == gqlINTERFACE
+				tp.Fields = append(tp.Fields, f)
+
+				// if tp.Name == "User" {
+				// 	log.Printf("Field %v", t)
+				// }
+			}
 		}
 
 		if t.Kind() == gqlOBJECT {
@@ -261,15 +268,11 @@ func (g *CodeGen) Generate(args *ArgType) error {
 		g.queryName = pts(inspect.QueryType().Name())
 	}
 
+	// Types for Generation
 	types := []*TypeDef{}
 
-	resType := &TypeDef{
-		Name:   "GqlResolver",
-		Fields: []*FieldDef{},
-	}
-
 	// Types that implements Node - Useful for extra work / model creation etc
-	models := []*TypeDef{}
+	models := map[string]*TypeDef{}
 
 	for _, typ := range inspect.Types() {
 		if KnownGQLTypes[*typ.Name()] {
@@ -283,20 +286,10 @@ func (g *CodeGen) Generate(args *ArgType) error {
 			gtp := NewType(typ)
 			typName := pts(typ.Name())
 
-			// save Query & Mutation definitions to be generated later
+			// Identify Query & Mutation definitions
 			if typName == gqlQuery || typName == gqlMutation {
-				resType.IsQuery = typName == gqlQuery
-				resType.IsMutation = typName == gqlMutation
-
 				gtp.IsQuery = typName == gqlQuery
 				gtp.IsMutation = typName == gqlMutation
-
-				for _, value := range gtp.Fields {
-					//resType.Fields[key] = value
-					resType.Fields = append(resType.Fields, value)
-				}
-			} else {
-				//log.Printf("Generating Go code for %s %s", typ.Kind(), typName)
 			}
 
 			types = append(types, gtp)
@@ -322,9 +315,13 @@ func (g *CodeGen) Generate(args *ArgType) error {
 	for _, t := range types {
 		if !t.IsInterface && !t.IsQuery && !t.IsMutation {
 			for _, i := range t.Interfaces {
-				// Get Node implemented types - We can use this info create Models etc
+				// Get Node implemented types - We can use this info create MODELS etc
 				if i == "Node" {
-					models = append(models, t)
+					// Set model is true based on [TYPE] implement [NODE]
+					t.IsModel = true
+
+					// Save them to a map for easy access
+					models[t.Name] = t
 				}
 			}
 
@@ -338,7 +335,7 @@ func (g *CodeGen) Generate(args *ArgType) error {
 	return nil
 }
 
-func (g *CodeGen) generateType(args *ArgType, tp *TypeDef, models []*TypeDef) error {
+func (g *CodeGen) generateType(args *ArgType, tp *TypeDef, models map[string]*TypeDef) error {
 
 	log.Printf("Generating Go code for %s %s", gqlOBJECT, tp.Name)
 
@@ -348,11 +345,20 @@ func (g *CodeGen) generateType(args *ArgType, tp *TypeDef, models []*TypeDef) er
 	templateName = strings.TrimSuffix(templateName, "Edge")
 	templateName = strings.TrimSuffix(templateName, "Connection")
 
-	// for _, f := range tp.Fields {
-	// 	// if t.Name == "User" {
-	// 	// 	log.Printf("Field [%s] for [%s] - Parent %s", f.Name, t.Name, f.Parent)
-	// 	// }
-	// }
+	// Check Model Explicitly
+	if tp.IsModel {
+		for _, f := range tp.Fields {
+			// Check if the field is GoType or User defined for Models
+			if ok := KnownGoTypes[f.Type.GoType]; !ok {
+				f.IsUserDefined = true
+			}
+
+			// Special case for Graphql Time and ID
+			if f.Type.GoType == "time.Time" || f.Type.GoType == "graphql.Time" || f.Type.GoType == "graphql.ID" {
+				f.IsUserDefined = false
+			}
+		}
+	}
 
 	// generate type template
 	err := args.ExecuteTemplate(templateType, templateName, gqlOBJECT, tp)
