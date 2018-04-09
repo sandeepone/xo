@@ -69,7 +69,8 @@ func (a *ArgType) NewTemplateFuncs() template.FuncMap {
 		"remove_line_breaks": a.removeLineBreaks,
 		"includes_string":    a.includesString,
 		"sprintf":            fmt.Sprintf,
-		"gqlReturnType":      gqlReturnType,
+		"gqlReturnType":      GenReturnType,
+		"gqlGenResolver":     GenResolver,
 	}
 }
 
