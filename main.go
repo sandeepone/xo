@@ -273,12 +273,18 @@ func getFile(args *internal.ArgType, t *internal.TBuf) (*os.File, error) {
 	if t.TemplateType.String() == "graphql.type" {
 		args.Package = "objects"
 		filename = path.Join(args.Path, "objects/"+filename) + args.Suffix
+	} else if t.TemplateType.String() == "graphql.model" {
+		args.Package = "objects"
+		filename = path.Join(args.Path, "objects/"+filename) + args.Suffix
 	} else if t.TemplateType.String() == "graphql.query" {
 		args.Package = "queries"
 		filename = path.Join(args.Path, "queries/"+filename) + args.Suffix
 	} else if t.TemplateType.String() == "graphql.mutation" {
 		args.Package = "mutations"
 		filename = path.Join(args.Path, "mutations/"+filename) + args.Suffix
+	} else if t.TemplateType.String() == "graphql.loader" {
+		args.Package = "loaders"
+		filename = path.Join(args.Path, "loaders/"+filename) + args.Suffix
 	} else {
 		args.Package = path.Base(args.Path)
 		filename = path.Join(args.Path, filename) + args.Suffix

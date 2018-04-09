@@ -63,6 +63,7 @@ type TypeDef struct {
 	Description string
 	GQLType     string
 	Fields      []*FieldDef
+	Interfaces  map[string]string
 
 	IsQuery     bool
 	IsMutation  bool
@@ -85,8 +86,6 @@ type Typ struct {
 	IsInterface bool
 	IsInput     bool
 
-	IsUserDefined bool // does the type exist in the typemap
-
 	gqlType *introspection.Type
 }
 
@@ -94,6 +93,9 @@ type FieldDef struct {
 	Name        string
 	Parent      string
 	Description string
+
+	IsDeprecated      bool
+	DeprecationReason string
 
 	Type *Typ
 	Args []*FieldDef
@@ -110,6 +112,7 @@ func NewType(t *introspection.Type) *TypeDef {
 		Name:        pts(t.Name()),
 		Description: pts(t.Description()),
 		Fields:      []*FieldDef{},
+		Interfaces:  map[string]string{},
 		gqlType:     t,
 	}
 
@@ -126,8 +129,16 @@ func NewType(t *introspection.Type) *TypeDef {
 			tp.Fields = append(tp.Fields, f)
 
 			// if tp.Name == "User" {
-			// 	log.Printf("Field [%s] for [%s] - %v", f.Name, tp.Name, tp.Name)
+			// 	log.Printf("Field %v", t)
 			// }
+		}
+
+		if t.Kind() == gqlOBJECT {
+			interfaces := *t.Interfaces()
+			for _, i := range interfaces {
+				name := pts(i.Name())
+				tp.Interfaces[name] = name
+			}
 		}
 	} else if t.Kind() == gqlINPUT_OBJECT {
 		for _, input := range *t.InputFields() {
@@ -220,7 +231,7 @@ FindGoType:
 		} else {
 			td.GoType = pts(tp.Name())
 			td.GQLType = pts(tp.Name()) + "Resolver"
-			td.IsUserDefined = true
+			//td.IsUserDefined = true
 		}
 	}
 	return
@@ -237,7 +248,7 @@ func (g *CodeGen) Parse() error {
 }
 
 func (g *CodeGen) Generate(args *ArgType) error {
-
+	// Parse the sting schema to schema object
 	g.Parse()
 
 	inspect := g.schema.Inspect()
@@ -256,6 +267,9 @@ func (g *CodeGen) Generate(args *ArgType) error {
 		Name:   "GqlResolver",
 		Fields: []*FieldDef{},
 	}
+
+	// Types that implements Node - Useful for extra work / model creation etc
+	models := []*TypeDef{}
 
 	for _, typ := range inspect.Types() {
 		if KnownGQLTypes[*typ.Name()] {
@@ -307,8 +321,15 @@ func (g *CodeGen) Generate(args *ArgType) error {
 
 	for _, t := range types {
 		if !t.IsInterface && !t.IsQuery && !t.IsMutation {
-			// Generate Models
-			if err := g.generateType(args, t); err != nil {
+			for _, i := range t.Interfaces {
+				// Get Node implemented types - We can use this info create Models etc
+				if i == "Node" {
+					models = append(models, t)
+				}
+			}
+
+			// Generate Types
+			if err := g.generateType(args, t, models); err != nil {
 				return err
 			}
 		}
@@ -317,14 +338,7 @@ func (g *CodeGen) Generate(args *ArgType) error {
 	return nil
 }
 
-func (g *CodeGen) returnString(strPtr *string) string {
-	if strPtr != nil {
-		return *strPtr
-	}
-	return ""
-}
-
-func (g *CodeGen) generateType(args *ArgType, tp *TypeDef) error {
+func (g *CodeGen) generateType(args *ArgType, tp *TypeDef, models []*TypeDef) error {
 
 	log.Printf("Generating Go code for %s %s", gqlOBJECT, tp.Name)
 
@@ -333,11 +347,6 @@ func (g *CodeGen) generateType(args *ArgType, tp *TypeDef) error {
 
 	templateName = strings.TrimSuffix(templateName, "Edge")
 	templateName = strings.TrimSuffix(templateName, "Connection")
-
-	// // if verbose
-	// if args.Verbose {
-	// 	log.Printf("GenerateType [%s] Template Name [%s]", name, templateName)
-	// }
 
 	// for _, f := range tp.Fields {
 	// 	// if t.Name == "User" {
