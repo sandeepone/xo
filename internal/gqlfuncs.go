@@ -1,7 +1,7 @@
 package internal
 
 import (
-	//"strings"
+	"strings"
 
 	//"github.com/graph-gophers/graphql-go"
 	"github.com/graph-gophers/graphql-go/introspection"
@@ -34,7 +34,7 @@ func pts(s *string) string {
 	return *s
 }
 
-func GenReturnType(t *Typ, mode, fieldName, pkg string) string {
+func GenType(t *Typ, mode, fieldName, pkg string) string {
 	var r string
 
 	if mode == "struct" || mode == "argStruct" {
@@ -68,7 +68,7 @@ func GenReturnType(t *Typ, mode, fieldName, pkg string) string {
 		return r
 	}
 
-	r += GenReturnType(t.Type, mode, fieldName, pkg)
+	r += GenType(t.Type, mode, fieldName, pkg)
 
 	// Special case for edges - ugly hack
 	if mode == "struct" && fieldName == "edges" {
@@ -79,11 +79,46 @@ func GenReturnType(t *Typ, mode, fieldName, pkg string) string {
 }
 
 // Resolvers generates the resolver function for the given FieldDef
-func GenResolver(f *FieldDef, model, pkg string) string {
-	var r string
+func GenResolver(f *FieldDef, isModel bool, pkg string) string {
+	res := GenType(f.Type, "resolver", f.Name, pkg)
+	//returnType := res
 
-	// res := GenReturnType(f.Type, "resolver", f.Name, pkg)
-	// returnType := res
+	r := "func (r *" + f.Parent + "Resolver) " + capitalise(f.Name) + "("
+	r += ") " + res + " {\n"
+
+	if !isModel {
+		// Special Case for Edges
+		if f.Name == "edges" {
+			name := strings.TrimSuffix(f.Parent, "Connection")
+
+			r += " if r." + name + "Connection.Edges == nil { \n"
+			r += " return &[]*" + name + "EdgeResolver{} \n"
+			r += " } \n\n"
+		}
+
+		// Special Case for PageInfo
+		if f.Name == "pageInfo" {
+			r += " if r." + f.Parent + ".PageInfo == nil { \n"
+			r += " return &PageInfoResolver{PageInfo{}} \n"
+			r += " } \n\n"
+		}
+
+		r += "  return "
+
+		// Add pointer for Pageinfo cursors
+		if f.Parent == "PageInfo" && (f.Name == "endCursor" || f.Name == "startCursor") {
+			r += "&"
+		}
+
+		// if f.Type.IsNullable {
+		// 	r += "&"
+		// }
+
+		r += "r." + f.Parent + "." + capitalise(f.Name)
+
+		r += "\n}"
+		return r
+	}
 
 	// if f.Type.GQLType == "[]" {
 	// 	if f.Type.IsNullable {
@@ -101,32 +136,36 @@ func GenResolver(f *FieldDef, model, pkg string) string {
 
 	if _, ok := KnownGoTypes[f.Type.GQLType]; !ok {
 		if f.Type.GQLType == "graphql.ID" {
-			r += "  id := graphql.ID(r." + model + "." + f.Name + ")\n"
+			r += " if r." + f.Parent + "." + f.Name + " == \"\" { "
+			r += "  return graphql.ID(\"\")"
+			r += "  }\n\n"
+			r += "//return graphql.ID(r." + f.Parent + "." + f.Name + ")\n"
 			r += "  return "
 
 			if f.Type.IsNullable {
 				r += "&"
 			}
 
-			r += "id"
+			r += "relay.ToGlobalID(\"" + f.Parent + "\", r." + f.Parent + "." + f.Name + ")"
 		} else if f.Type.GQLType == "graphql.Time" {
 			dref := ""
 			if f.Type.IsNullable {
 				dref = "*"
 			}
 
-			r += f.Type.GQLType + "{Time: " + dref + "r." + model + "." + f.Name + "}"
+			r += f.Type.GQLType + "{Time: " + dref + "r." + f.Parent + "." + capitalise(f.Name) + "}"
 		} else {
 			ref := ""
 			if !f.Type.IsNullable {
 				ref = "&"
 			}
 
-			r += f.Type.GQLType + "{" + ref + "r." + model + "." + f.Name + "}"
+			r += f.Type.GQLType + "{" + ref + "r." + f.Parent + "." + capitalise(f.Name) + "}"
 		}
 	} else {
-		r += "r." + model + "." + f.Name
+		r += "r." + f.Parent + "." + capitalise(f.Name)
 	}
 
+	r += "\n}"
 	return r
 }

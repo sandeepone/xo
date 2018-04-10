@@ -64,13 +64,13 @@ func (a *ArgType) NewTemplateFuncs() template.FuncMap {
 		"trim":               strings.Trim,
 		"trimPrefix":         strings.TrimPrefix,
 		"trimSuffix":         strings.TrimSuffix,
-		"capitalize":         a.capitalise,
-		"uncapitalize":       a.unCapitalise,
-		"remove_line_breaks": a.removeLineBreaks,
-		"includes_string":    a.includesString,
+		"capitalize":         capitalise,
+		"uncapitalize":       unCapitalise,
+		"remove_line_breaks": removeLineBreaks,
+		"includes_string":    includesString,
 		"sprintf":            fmt.Sprintf,
-		"gqlReturnType":      GenReturnType,
-		"gqlGenResolver":     GenResolver,
+		"genType":            GenType,
+		"genResolver":        GenResolver,
 	}
 }
 
@@ -803,11 +803,11 @@ func (a *ArgType) getstartcount(fields []*Field, pkFields []*Field) int {
 	return len(fields) - len(pkFields)
 }
 
-func (a *ArgType) removeLineBreaks(str string) string {
+func removeLineBreaks(str string) string {
 	return strings.Replace(str, "\n", " ", -1)
 }
 
-func (a *ArgType) capitalise(str string) string {
+func capitalise(str string) string {
 	if strings.ToLower(str) == "id" {
 		return "ID"
 	}
@@ -815,11 +815,11 @@ func (a *ArgType) capitalise(str string) string {
 	return strings.ToUpper(string(str[0])) + str[1:]
 }
 
-func (a *ArgType) unCapitalise(str string) string {
+func unCapitalise(str string) string {
 	return strings.ToLower(string(str[0])) + str[1:]
 }
 
-func (a *ArgType) includesString(strings []string, str string) bool {
+func includesString(strings []string, str string) bool {
 	for _, val := range strings {
 		if val == str {
 			return true

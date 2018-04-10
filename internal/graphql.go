@@ -51,9 +51,7 @@ var KnownGoTypes = map[string]bool{
 }
 
 type CodeGen struct {
-	rawSchema    string
-	mutationName string
-	queryName    string
+	rawSchema string
 
 	schema *graphql.Schema
 }
@@ -245,7 +243,7 @@ FindGoType:
 }
 
 func NewCodeGen(schema string) *CodeGen {
-	return &CodeGen{schema, "Mutation", "Query", nil}
+	return &CodeGen{schema, nil}
 }
 
 func (g *CodeGen) Parse() error {
@@ -258,23 +256,13 @@ func (g *CodeGen) Generate(args *ArgType) error {
 	// Parse the sting schema to schema object
 	g.Parse()
 
-	inspect := g.schema.Inspect()
-
-	if inspect.MutationType() != nil {
-		g.mutationName = pts(inspect.MutationType().Name())
-	}
-
-	if inspect.QueryType() != nil {
-		g.queryName = pts(inspect.QueryType().Name())
-	}
-
 	// Types for Generation
 	types := []*TypeDef{}
 
 	// Types that implements Node - Useful for extra work / model creation etc
 	models := map[string]*TypeDef{}
 
-	for _, typ := range inspect.Types() {
+	for _, typ := range g.schema.Inspect().Types() {
 		if KnownGQLTypes[*typ.Name()] {
 			continue
 		}
@@ -349,7 +337,7 @@ func (g *CodeGen) generateType(args *ArgType, tp *TypeDef, models map[string]*Ty
 	if tp.IsModel {
 		for _, f := range tp.Fields {
 			// Check if the field is GoType or User defined for Models
-			if ok := KnownGoTypes[f.Type.GoType]; !ok {
+			if _, ok := KnownGoTypes[f.Type.GoType]; !ok {
 				f.IsUserDefined = true
 			}
 
@@ -367,200 +355,160 @@ func (g *CodeGen) generateType(args *ArgType, tp *TypeDef, models map[string]*Ty
 	}
 
 	return nil
-	// name := *tp.Name()
-	// templateType := GraphQLTypeTemplate
-	// templateName := name
-
-	// if name == g.queryName {
-	// 	templateType = GraphQLQueryTemplate
-	// }
-
-	// if name == g.mutationName {
-	// 	templateType = GraphQLMutationTemplate
-	// }
-
-	// if tp.Kind() == "INPUT_OBJECT" {
-	// 	templateType = GraphQLMutationTemplate
-	// }
-
-	// if tp.Kind() == "OBJECT" && strings.HasSuffix(templateName, "Payload") {
-	// 	templateType = GraphQLMutationTemplate
-	// }
-
-	// templateName = strings.TrimSuffix(name, "Edge")
-	// templateName = strings.TrimSuffix(templateName, "Connection")
-
-	// // if verbose
-	// if args.Verbose {
-	// 	log.Printf("GenerateType [%s] Template Name [%s] - QUERY [%t]", name, templateName, (name == g.queryName))
-	// }
-
-	// // Move this to a util func (g *CodeGen)
-	// var ifields []*introspection.Field
-	// if tp.Fields(&struct{ IncludeDeprecated bool }{true}) != nil {
-	// 	ifields = *tp.Fields(&struct{ IncludeDeprecated bool }{true})
-	// }
-
-	// fields := make([]GqlField, len(ifields))
-	// methods := make([]GqlMethod, len(ifields))
-
-	// for i, fp := range ifields {
-	// 	fieldCode, methodCode := g.generateField(args, fp, tp)
-	// 	fields[i] = fieldCode
-	// 	methods[i] = methodCode
-	// }
-
-	// var inputFields []GqlField
-	// if tp.InputFields() != nil {
-	// 	for _, ip := range *tp.InputFields() {
-	// 		inputField := g.generateInputValue(args, ip, tp)
-	// 		inputFields = append(inputFields, inputField)
-	// 	}
-	// }
-
-	// possibleTypes := []string{}
-	// if tp.PossibleTypes() != nil {
-	// 	for _, tp := range *tp.PossibleTypes() {
-	// 		possibleTypes = append(possibleTypes, *tp.Name())
-	// 	}
-	// }
-
-	// enumValues := []string{}
-	// if tp.EnumValues(&struct{ IncludeDeprecated bool }{true}) != nil {
-	// 	for _, value := range *tp.EnumValues(&struct{ IncludeDeprecated bool }{true}) {
-	// 		enumValues = append(enumValues, value.Name())
-	// 	}
-	// }
-
-	// typeTpl := map[string]interface{}{
-	// 	"Kind":            tp.Kind(),
-	// 	"PossibleTypes":   possibleTypes,
-	// 	"EnumValues":      enumValues,
-	// 	"TypeName":        name,
-	// 	"TypeDescription": args.removeLineBreaks(g.returnString(tp.Description())),
-	// 	"Fields":          fields,
-	// 	"InputFields":     inputFields,
-	// 	"Methods":         methods,
-	// 	"IsEntry":         g.isEntryPoint(name),
-	// 	"IsScalar":        tp.Kind() == "SCALAR",
-	// 	"IsInterface":     tp.Kind() == "INTERFACE",
-	// 	"IsInput":         tp.Kind() == "INPUT_OBJECT",
-	// 	"IsResolver":      tp.Kind() == "RESOLVER",
-	// }
-
-	// //log.Printf("TYPEKIND [%s]", tp.Kind())
-
-	// if templateType == GraphQLQueryTemplate {
-	// 	for _, m := range methods {
-	// 		templateName = args.unCapitalise(m.ReturnType)
-	// 		templateName = strings.TrimPrefix(templateName, "*")
-
-	// 		templateName = strings.TrimSuffix(templateName, "Resolver")
-	// 		templateName = strings.TrimSuffix(templateName, "Connection")
-
-	// 		// override methods to single method in loop
-	// 		typeTpl["Methods"] = append([]GqlMethod{}, m)
-	// 		m.IsQuery = true
-
-	// 		// if verbose
-	// 		if args.Verbose {
-	// 			log.Printf("GenerateQuery [%s] Template Name [%s] MethodName [%s]", name, templateName, m.Name)
-	// 		}
-
-	// 		// generate query template
-	// 		err := args.ExecuteTemplate(templateType, templateName, tp.Kind(), typeTpl)
-	// 		if err != nil {
-	// 			return err
-	// 		}
-	// 	}
-	// } else if templateType == GraphQLMutationTemplate {
-	// 	if templateName == "Mutation" {
-	// 		for _, m := range methods {
-	// 			templateName = args.unCapitalise(m.Name)
-	// 			m.NReturnType = strings.TrimSuffix(m.NReturnType, "Resolver")
-	// 			m.IsMutation = true
-
-	// 			// override methods to single method in loop
-	// 			typeTpl["Methods"] = append([]GqlMethod{}, m)
-
-	// 			// if verbose
-	// 			if args.Verbose {
-	// 				log.Printf("GenerateMutation [%s] Template Name [%s] MethodName [%s]", name, templateName, m.Name)
-	// 			}
-
-	// 			// generate type template
-	// 			err := args.ExecuteTemplate(templateType, templateName, tp.Kind(), typeTpl)
-	// 			if err != nil {
-	// 				return err
-	// 			}
-	// 		}
-	// 	} else {
-	// 		// reset the old methods
-	// 		typeTpl["Methods"] = methods
-
-	// 		templateName = strings.TrimSuffix(templateName, "Input")
-	// 		templateName = strings.TrimSuffix(templateName, "Payload")
-
-	// 		// if verbose
-	// 		if args.Verbose {
-	// 			log.Printf("GenerateMutation [%s] Template Name [%s] MethodName [%s]", name, templateName, "")
-	// 		}
-
-	// 		// generate type template
-	// 		err := args.ExecuteTemplate(templateType, templateName, tp.Kind(), typeTpl)
-	// 		if err != nil {
-	// 			return err
-	// 		}
-	// 	}
-	// } else {
-	// 	// reset the old methods
-	// 	typeTpl["Methods"] = methods
-
-	// 	// generate type template
-	// 	err := args.ExecuteTemplate(templateType, templateName, tp.Kind(), typeTpl)
-	// 	if err != nil {
-	// 		return err
-	// 	}
-	// }
 }
 
-func (g *CodeGen) getTypeName(tp *introspection.Type, input bool) (typ string) {
-	// check:
-	// 	if tp.Kind() == "NON_NULL" {
-	// 		tp = tp.OfType()
-	// 	} else {
-	// 		typ = typ + "*"
-	// 	}
+// name := *tp.Name()
+// templateType := GraphQLTypeTemplate
+// templateName := name
 
-	// 	if tp.Kind() == "LIST" {
-	// 		tp = tp.OfType()
-	// 		typ = typ + "[]"
-	// 		goto check
-	// 	}
+// if name == g.queryName {
+// 	templateType = GraphQLQueryTemplate
+// }
 
-	// 	name := tp.Name()
-	// 	if val, ok := internalTypeConfig[*name]; ok {
-	// 		return typ + val.goType
-	// 	}
+// if name == g.mutationName {
+// 	templateType = GraphQLMutationTemplate
+// }
 
-	// 	if tp.Kind() == "ENUM" {
-	// 		typ = typ + *name
-	// 	} else if tp.Kind() != "INPUT_OBJECT" {
-	// 		if len(typ) > 0 {
-	// 			if typ[len(typ)-1] != '*' {
-	// 				typ = typ + "*"
-	// 			}
-	// 		} else if tp.Kind() != "SCALAR" {
-	// 			typ = "*"
-	// 		}
-	// 		typ = typ + *name + "Resolver"
-	// 	} else {
-	// 		typ = typ + *name
-	// 	}
+// if tp.Kind() == "INPUT_OBJECT" {
+// 	templateType = GraphQLMutationTemplate
+// }
 
-	// 	if typ[0] != '*' && tp.Kind() == "INPUT_OBJECT" {
-	// 		typ = "*" + typ
-	// 	}
+// if tp.Kind() == "OBJECT" && strings.HasSuffix(templateName, "Payload") {
+// 	templateType = GraphQLMutationTemplate
+// }
 
-	return
-}
+// templateName = strings.TrimSuffix(name, "Edge")
+// templateName = strings.TrimSuffix(templateName, "Connection")
+
+// // if verbose
+// if args.Verbose {
+// 	log.Printf("GenerateType [%s] Template Name [%s] - QUERY [%t]", name, templateName, (name == g.queryName))
+// }
+
+// // Move this to a util func (g *CodeGen)
+// var ifields []*introspection.Field
+// if tp.Fields(&struct{ IncludeDeprecated bool }{true}) != nil {
+// 	ifields = *tp.Fields(&struct{ IncludeDeprecated bool }{true})
+// }
+
+// fields := make([]GqlField, len(ifields))
+// methods := make([]GqlMethod, len(ifields))
+
+// for i, fp := range ifields {
+// 	fieldCode, methodCode := g.generateField(args, fp, tp)
+// 	fields[i] = fieldCode
+// 	methods[i] = methodCode
+// }
+
+// var inputFields []GqlField
+// if tp.InputFields() != nil {
+// 	for _, ip := range *tp.InputFields() {
+// 		inputField := g.generateInputValue(args, ip, tp)
+// 		inputFields = append(inputFields, inputField)
+// 	}
+// }
+
+// possibleTypes := []string{}
+// if tp.PossibleTypes() != nil {
+// 	for _, tp := range *tp.PossibleTypes() {
+// 		possibleTypes = append(possibleTypes, *tp.Name())
+// 	}
+// }
+
+// enumValues := []string{}
+// if tp.EnumValues(&struct{ IncludeDeprecated bool }{true}) != nil {
+// 	for _, value := range *tp.EnumValues(&struct{ IncludeDeprecated bool }{true}) {
+// 		enumValues = append(enumValues, value.Name())
+// 	}
+// }
+
+// typeTpl := map[string]interface{}{
+// 	"Kind":            tp.Kind(),
+// 	"PossibleTypes":   possibleTypes,
+// 	"EnumValues":      enumValues,
+// 	"TypeName":        name,
+// 	"TypeDescription": args.removeLineBreaks(g.returnString(tp.Description())),
+// 	"Fields":          fields,
+// 	"InputFields":     inputFields,
+// 	"Methods":         methods,
+// 	"IsEntry":         g.isEntryPoint(name),
+// 	"IsScalar":        tp.Kind() == "SCALAR",
+// 	"IsInterface":     tp.Kind() == "INTERFACE",
+// 	"IsInput":         tp.Kind() == "INPUT_OBJECT",
+// 	"IsResolver":      tp.Kind() == "RESOLVER",
+// }
+
+// //log.Printf("TYPEKIND [%s]", tp.Kind())
+
+// if templateType == GraphQLQueryTemplate {
+// 	for _, m := range methods {
+// 		templateName = args.unCapitalise(m.ReturnType)
+// 		templateName = strings.TrimPrefix(templateName, "*")
+
+// 		templateName = strings.TrimSuffix(templateName, "Resolver")
+// 		templateName = strings.TrimSuffix(templateName, "Connection")
+
+// 		// override methods to single method in loop
+// 		typeTpl["Methods"] = append([]GqlMethod{}, m)
+// 		m.IsQuery = true
+
+// 		// if verbose
+// 		if args.Verbose {
+// 			log.Printf("GenerateQuery [%s] Template Name [%s] MethodName [%s]", name, templateName, m.Name)
+// 		}
+
+// 		// generate query template
+// 		err := args.ExecuteTemplate(templateType, templateName, tp.Kind(), typeTpl)
+// 		if err != nil {
+// 			return err
+// 		}
+// 	}
+// } else if templateType == GraphQLMutationTemplate {
+// 	if templateName == "Mutation" {
+// 		for _, m := range methods {
+// 			templateName = args.unCapitalise(m.Name)
+// 			m.NReturnType = strings.TrimSuffix(m.NReturnType, "Resolver")
+// 			m.IsMutation = true
+
+// 			// override methods to single method in loop
+// 			typeTpl["Methods"] = append([]GqlMethod{}, m)
+
+// 			// if verbose
+// 			if args.Verbose {
+// 				log.Printf("GenerateMutation [%s] Template Name [%s] MethodName [%s]", name, templateName, m.Name)
+// 			}
+
+// 			// generate type template
+// 			err := args.ExecuteTemplate(templateType, templateName, tp.Kind(), typeTpl)
+// 			if err != nil {
+// 				return err
+// 			}
+// 		}
+// 	} else {
+// 		// reset the old methods
+// 		typeTpl["Methods"] = methods
+
+// 		templateName = strings.TrimSuffix(templateName, "Input")
+// 		templateName = strings.TrimSuffix(templateName, "Payload")
+
+// 		// if verbose
+// 		if args.Verbose {
+// 			log.Printf("GenerateMutation [%s] Template Name [%s] MethodName [%s]", name, templateName, "")
+// 		}
+
+// 		// generate type template
+// 		err := args.ExecuteTemplate(templateType, templateName, tp.Kind(), typeTpl)
+// 		if err != nil {
+// 			return err
+// 		}
+// 	}
+// } else {
+// 	// reset the old methods
+// 	typeTpl["Methods"] = methods
+
+// 	// generate type template
+// 	err := args.ExecuteTemplate(templateType, templateName, tp.Kind(), typeTpl)
+// 	if err != nil {
+// 		return err
+// 	}
+// }
