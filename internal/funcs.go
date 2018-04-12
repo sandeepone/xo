@@ -71,6 +71,8 @@ func (a *ArgType) NewTemplateFuncs() template.FuncMap {
 		"sprintf":            fmt.Sprintf,
 		"genType":            GenType,
 		"genResolver":        GenResolver,
+		"genInterface":       GenInterface,
+		"genFuncArgs":        GenFuncArgs,
 	}
 }
 

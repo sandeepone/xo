@@ -41,13 +41,14 @@ var KnownGQLTypes = map[string]bool{
 }
 
 var KnownGoTypes = map[string]bool{
-	"string":  true,
-	"bool":    true,
-	"float32": true,
-	"float64": true,
-	"int":     true,
-	"int32":   true,
-	"int64":   true,
+	"string":    true,
+	"bool":      true,
+	"float32":   true,
+	"float64":   true,
+	"int":       true,
+	"int32":     true,
+	"int64":     true,
+	"time.Time": true,
 }
 
 type CodeGen struct {
@@ -60,8 +61,11 @@ type TypeDef struct {
 	Name        string
 	Description string
 	GQLType     string
-	Fields      []*FieldDef
-	Interfaces  map[string]string
+	Template    string
+
+	Fields     []*FieldDef
+	Efields    []*FieldDef // Extra Fields - Model Userdefined Fields ex: Todos, Posts on User type
+	Interfaces map[string]string
 
 	IsQuery     bool
 	IsMutation  bool
@@ -112,6 +116,7 @@ func NewType(t *introspection.Type) *TypeDef {
 		Name:        pts(t.Name()),
 		Description: pts(t.Description()),
 		Fields:      []*FieldDef{},
+		Efields:     []*FieldDef{},
 		Interfaces:  map[string]string{},
 		gqlType:     t,
 	}
@@ -268,7 +273,6 @@ func (g *CodeGen) Generate(args *ArgType) error {
 		}
 
 		//log.Printf("Generating Go code for %s %s", typ.Kind(), pts(typ.Name()))
-
 		switch typ.Kind() {
 		case gqlOBJECT:
 			gtp := NewType(typ)
@@ -284,7 +288,7 @@ func (g *CodeGen) Generate(args *ArgType) error {
 		case gqlSCALAR:
 			gtp := NewType(typ)
 			gtp.IsScalar = true
-			//types = append(types, gtp)
+			types = append(types, gtp)
 		case gqlINTERFACE:
 			gtp := NewType(typ)
 			gtp.IsInterface = true
@@ -301,20 +305,36 @@ func (g *CodeGen) Generate(args *ArgType) error {
 	}
 
 	for _, t := range types {
-		if !t.IsInterface && !t.IsQuery && !t.IsMutation {
+		// Set models
+		if !t.IsInterface && !t.IsQuery && !t.IsMutation && !t.IsScalar {
 			for _, i := range t.Interfaces {
 				// Get Node implemented types - We can use this info create MODELS etc
 				if i == "Node" {
-					// Set model is true based on [TYPE] implement [NODE]
+					// Set model is true based on [TYPE] implements [NODE]
 					t.IsModel = true
 
 					// Save them to a map for easy access
 					models[t.Name] = t
 				}
 			}
+		}
+	}
+
+	for _, t := range types {
+		// For types
+		if !t.IsInterface && !t.IsQuery && !t.IsMutation && !t.IsScalar {
 
 			// Generate Types
 			if err := g.generateType(args, t, models); err != nil {
+				return err
+			}
+		}
+
+		// For Queries & Mutation
+		if t.IsQuery || t.IsMutation {
+
+			// Generate Query/Mutation
+			if err := g.generateQuery(args, t, models); err != nil {
 				return err
 			}
 		}
@@ -323,33 +343,71 @@ func (g *CodeGen) Generate(args *ArgType) error {
 	return nil
 }
 
+func (g *CodeGen) generateQuery(args *ArgType, tp *TypeDef, models map[string]*TypeDef) error {
+
+	if tp.IsQuery {
+		log.Printf("Generating Go code for QUERY [%s]", tp.Name)
+
+		err := args.ExecuteTemplate(GraphQLQueryTemplate, "query", gqlQuery, tp)
+		if err != nil {
+			return err
+		}
+	}
+
+	if tp.IsMutation {
+		log.Printf("Generating Go code for MUTATION [%s]", tp.Name)
+
+		err := args.ExecuteTemplate(GraphQLMutationTemplate, "mutation", gqlMutation, tp)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+// Generate Type
 func (g *CodeGen) generateType(args *ArgType, tp *TypeDef, models map[string]*TypeDef) error {
 
-	log.Printf("Generating Go code for %s %s", gqlOBJECT, tp.Name)
+	log.Printf("Generating Go code for TYPE [%s]", tp.Name)
 
-	templateType := GraphQLTypeTemplate
+	// Check Model Explicitly
+	if tp.IsModel {
+		for i := len(tp.Fields) - 1; i >= 0; i-- {
+			// get field by new length of fields
+			f := tp.Fields[i]
+
+			// Check if the field is GoType or User defined for Models
+			if _, ok := KnownGoTypes[f.Type.GoType]; !ok {
+				// Mark this field as userDefined
+				f.IsUserDefined = true
+
+				// Remove this field from - Fields List
+				tp.Fields = append(tp.Fields[:i], tp.Fields[i+1:]...)
+
+				// Add this field to - Extra Fields List
+				tp.Efields = append(tp.Efields, f)
+			}
+		}
+
+		// generate TYPE_EXTRA - Model's Additional Fields
+		tp.Template = "EXTRA"
+		tplName := tp.Name + "_extra"
+
+		err := args.ExecuteTemplate(GraphQLTypeTemplate, tplName, gqlOBJECT, tp)
+		if err != nil {
+			return err
+		}
+	}
+
+	// generate TYPE
+	tp.Template = "TYPE"
 	templateName := tp.Name
 
 	templateName = strings.TrimSuffix(templateName, "Edge")
 	templateName = strings.TrimSuffix(templateName, "Connection")
 
-	// Check Model Explicitly
-	if tp.IsModel {
-		for _, f := range tp.Fields {
-			// Check if the field is GoType or User defined for Models
-			if _, ok := KnownGoTypes[f.Type.GoType]; !ok {
-				f.IsUserDefined = true
-			}
-
-			// Special case for Graphql Time and ID
-			if f.Type.GoType == "time.Time" || f.Type.GoType == "graphql.Time" || f.Type.GoType == "graphql.ID" {
-				f.IsUserDefined = false
-			}
-		}
-	}
-
-	// generate type template
-	err := args.ExecuteTemplate(templateType, templateName, gqlOBJECT, tp)
+	err := args.ExecuteTemplate(GraphQLTypeTemplate, templateName, gqlOBJECT, tp)
 	if err != nil {
 		return err
 	}
