@@ -1,57 +1,59 @@
-{{- define "inputField" }}
-    // {{capitalize .Name}} {{.Description}}
-    {{capitalize .Name}} {{.FieldType}} `json:"{{.Name}}"`
-{{- end }}
 
-{{- define "payloadField" }}
-    // {{capitalize .Name}} {{.Description}}
-    {{lcfirst .Name}} *objects.{{.NFieldType}} `json:"{{.Name}}"`
-{{- end }}
+{{- if eq .Template "MUTATION" }}
 
-{{- define "arguments" -}} 
-  args *struct{ {{ range . }} {{.Name | capitalize }} {{.Type }}
-  {{ end }} }
-{{- end }}
-
-{{- define "returnType" }}
-    {{- if .IsMutation }} (*{{.NReturnType}}, error) {{- else }} *objects.{{.NReturnType}} {{- end }}
-{{- end }}
-
-
-
-{{- define "method" }}
-    {{- if eq .TypeKind "OBJECT" }}
-        {{$hasArguments := gt (.Arguments | len) 0}}
-
+    // {{capitalize .Name}} - {{.Description}}
+    type {{.Name}} interface {
+      {{- range .Fields}}
+        {{ $hasArguments := gt (.Args | len) 0}}
         // {{capitalize .Name}} {{.Description}}
-        func (r *{{.TypeName}}) {{capitalize .Name}}({{- if $hasArguments }} {{template "arguments" .Arguments}} {{- end}}) {{ template "returnType" .}} {
-              
-          return {{- if .IsMutation }} nil,nil {{- else }} r.{{lcfirst .Return}} {{- end }}
-        }
-    {{- end }}
-{{- end }}
-
-
-
-
-{{if eq .Kind "INPUT_OBJECT"}}
-    // {{.TypeName}} {{.TypeDescription}} INPUT_OBJECT
-    type {{.TypeName}} struct {
-      {{- range .InputFields}} {{template "inputField" .}} {{end}}
+        {{capitalize .Name}}({{if $hasArguments}}context.Context, {{capitalize .Name}}Args{{end}}) ({{genType .Type "interface" .Name "package"}}, error)
+      {{- end}}
     }
-{{end}}
+
+
+{{- end}}
 
 
 
-{{if eq .Kind "OBJECT"}}
-    {{if ne .TypeName "Mutation"}}
-      // {{.TypeName}} {{.TypeDescription}}
-      type {{.TypeName}} struct {
-        {{- range .Fields}} {{template "payloadField" .}} {{- end}}
-      }
-    {{ end}}
 
-    {{range .Methods}} {{template "method" .}} {{end}}
-{{ end}}
+{{- if eq .Template "INPUT" }}
+
+  // {{.Name}} - {{.Description}}
+  type {{.Name}} struct {
+    {{- range .Fields}}
+      {{capitalize .Name}} {{genType .Type "struct" .Name "package"}}  `json:"{{.Name}}"` {{- if ne .Description "" }} // {{.Description}} {{- end}}
+    {{- end}}
+  }
+
+{{- end}}
+
+
+
+{{- if eq .Template "PAYLOAD" }}
+
+  {{- $TypeName := (.Name) -}}
+  {{- $IsModel := (.IsModel) -}}
+
+  // {{.Name}} {{.Description}}
+  type {{.Name}} struct {
+    {{- range .Fields}}
+      {{capitalize .Name}} {{genType .Type "struct" .Name "objects"}}  `json:"{{.Name}}"` // {{capitalize .Name}} {{.Description}}
+    {{- end}}
+  }
+  
+  // {{.Name}}Resolver resolver for {{.Name}}
+  type {{.Name}}Resolver struct {
+    {{.Name}}
+  }
+  
+  {{ range .Fields}}
+    // {{capitalize .Name}} {{.Description}}
+    func (r *{{capitalize .Parent}}Resolver) {{capitalize .Name}}() ({{genType .Type "interface" .Name "objects"}}, error) {
+      return r.{{capitalize .Parent}}.{{capitalize .Name}}
+    }
+    
+  {{ end}}
+
+{{- end}}
 
 

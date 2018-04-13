@@ -60,16 +60,24 @@ func GenType(t *Typ, mode, fieldName, pkg string) string {
 			r = "*" + r
 		}
 	} else {
-		if t.IsNullable {
-			r = "*" + r
-		}
+		// if t.IsNullable {
+		// 	r = "*" + r
+		// }
 
 		if mode == "interface" || mode == "query" {
+			ok := KnownGoTypes[t.GoType]
+
 			// Add golang package name if provided
-			if pkg != "package" && pkg != "" {
+			if pkg != "package" && pkg != "" && !ok {
 				r = pkg + "." + r
 			}
 
+			// if t.IsNullable {
+			// 	r = "*" + r
+			// }
+		}
+
+		if t.IsNullable {
 			r = "*" + r
 		}
 	}
@@ -200,9 +208,9 @@ func GenResolver(f *FieldDef, isModel bool, pkg string) string {
 				r += "relay.ToGlobalID(\"" + f.Parent + "\", r." + f.Parent + "." + f.Name + ")"
 			} else if f.Type.GQLType == "graphql.Time" {
 				dref := ""
-				if f.Type.IsNullable {
-					dref = "*"
-				}
+				// if f.Type.IsNullable {
+				// 	dref = "*"
+				// }
 
 				r += f.Type.GQLType + "{Time: " + dref + "r." + f.Parent + "." + capitalise(f.Name) + "}"
 			} else {

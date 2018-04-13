@@ -221,8 +221,8 @@ FindGoType:
 		td.GoType = "int32"
 		td.GQLType = "int32"
 	case "Float":
-		td.GoType = "float32"
-		td.GQLType = "float32"
+		td.GoType = "float64"
+		td.GQLType = "float64"
 	case "ID":
 		// TODO - shouldn't we use graphql.ID type for `ID` fields
 		// because it may not work for query and mutation calls?
@@ -267,6 +267,9 @@ func (g *CodeGen) Generate(args *ArgType) error {
 	// Types that implements Node - Useful for extra work / model creation etc
 	models := map[string]*TypeDef{}
 
+	// Mutation Payloads
+	payloads := map[string]*TypeDef{}
+
 	for _, typ := range g.schema.Inspect().Types() {
 		if KnownGQLTypes[*typ.Name()] {
 			continue
@@ -284,11 +287,17 @@ func (g *CodeGen) Generate(args *ArgType) error {
 				gtp.IsMutation = typName == gqlMutation
 			}
 
-			types = append(types, gtp)
+			// Save payloads to string array for better handling
+			if strings.HasSuffix(typName, "Payload") {
+				//log.Printf("Graphql type %s", typName)
+				payloads[gtp.Name] = gtp
+			} else {
+				types = append(types, gtp)
+			}
 		case gqlSCALAR:
 			gtp := NewType(typ)
 			gtp.IsScalar = true
-			types = append(types, gtp)
+			//types = append(types, gtp)
 		case gqlINTERFACE:
 			gtp := NewType(typ)
 			gtp.IsInterface = true
@@ -298,7 +307,7 @@ func (g *CodeGen) Generate(args *ArgType) error {
 		case gqlINPUT_OBJECT:
 			gtp := NewType(typ)
 			gtp.IsInput = true
-			//types = append(types, gtp)
+			types = append(types, gtp)
 		default:
 			log.Printf("Unknown graphql type ", *typ.Name(), ":", typ.Kind())
 		}
@@ -306,7 +315,7 @@ func (g *CodeGen) Generate(args *ArgType) error {
 
 	for _, t := range types {
 		// Set models
-		if !t.IsInterface && !t.IsQuery && !t.IsMutation && !t.IsScalar {
+		if !t.IsInterface && !t.IsQuery && !t.IsMutation && !t.IsScalar && !t.IsInput {
 			for _, i := range t.Interfaces {
 				// Get Node implemented types - We can use this info create MODELS etc
 				if i == "Node" {
@@ -322,7 +331,7 @@ func (g *CodeGen) Generate(args *ArgType) error {
 
 	for _, t := range types {
 		// For types
-		if !t.IsInterface && !t.IsQuery && !t.IsMutation && !t.IsScalar {
+		if !t.IsInterface && !t.IsQuery && !t.IsMutation && !t.IsScalar && !t.IsInput {
 
 			// Generate Types
 			if err := g.generateType(args, t, models); err != nil {
@@ -334,16 +343,32 @@ func (g *CodeGen) Generate(args *ArgType) error {
 		if t.IsQuery || t.IsMutation {
 
 			// Generate Query/Mutation
-			if err := g.generateQuery(args, t, models); err != nil {
+			if err := g.generateQuery(args, t, models, false); err != nil {
 				return err
 			}
+		}
+
+		// For InputObjects
+		if t.IsInput {
+
+			// Generate Query/Mutation
+			if err := g.generateQuery(args, t, models, false); err != nil {
+				return err
+			}
+		}
+	}
+
+	for _, p := range payloads {
+		// Generate Mutation Payload
+		if err := g.generateQuery(args, p, models, true); err != nil {
+			return err
 		}
 	}
 
 	return nil
 }
 
-func (g *CodeGen) generateQuery(args *ArgType, tp *TypeDef, models map[string]*TypeDef) error {
+func (g *CodeGen) generateQuery(args *ArgType, tp *TypeDef, models map[string]*TypeDef, payload bool) error {
 
 	if tp.IsQuery {
 		log.Printf("Generating Go code for QUERY [%s]", tp.Name)
@@ -357,7 +382,30 @@ func (g *CodeGen) generateQuery(args *ArgType, tp *TypeDef, models map[string]*T
 	if tp.IsMutation {
 		log.Printf("Generating Go code for MUTATION [%s]", tp.Name)
 
+		tp.Template = "MUTATION"
 		err := args.ExecuteTemplate(GraphQLMutationTemplate, "mutation", gqlMutation, tp)
+		if err != nil {
+			return err
+		}
+	}
+
+	// Mutation inputs
+	if tp.IsInput {
+		log.Printf("Generating Go code for INPUT [%s]", tp.Name)
+
+		tp.Template = "INPUT"
+		err := args.ExecuteTemplate(GraphQLMutationTemplate, "request", gqlMutation, tp)
+		if err != nil {
+			return err
+		}
+	}
+
+	// Mutation Payloads
+	if payload {
+		log.Printf("Generating Go code for PAYLOAD [%s]", tp.Name)
+
+		tp.Template = "PAYLOAD"
+		err := args.ExecuteTemplate(GraphQLMutationTemplate, "response", gqlMutation, tp)
 		if err != nil {
 			return err
 		}
@@ -390,14 +438,14 @@ func (g *CodeGen) generateType(args *ArgType, tp *TypeDef, models map[string]*Ty
 			}
 		}
 
-		// generate TYPE_EXTRA - Model's Additional Fields
-		tp.Template = "EXTRA"
-		tplName := tp.Name + "_extra"
+		// // generate TYPE_EXTRA - Model's Additional Fields
+		// tp.Template = "EXTRA"
+		// tplName := tp.Name + "_extra"
 
-		err := args.ExecuteTemplate(GraphQLTypeTemplate, tplName, gqlOBJECT, tp)
-		if err != nil {
-			return err
-		}
+		// err := args.ExecuteTemplate(GraphQLTypeTemplate, tplName, gqlOBJECT, tp)
+		// if err != nil {
+		// 	return err
+		// }
 	}
 
 	// generate TYPE
