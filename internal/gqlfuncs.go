@@ -87,6 +87,27 @@ func GenType(t *Typ, mode, fieldName, pkg string) string {
 		r = "*" + r
 	}
 
+	// Add golang package name if provided
+	ok := KnownGoTypes[t.GoType]
+	if (mode == "struct" || mode == "interface") && pkg != "package" && pkg != "" && !ok {
+		// Avoid adding pointer multiple times
+		r = strings.Replace(r, "*", "", 1)
+
+		// Avoid adding pkg multiple times ex: (models.models.user)
+		r = strings.Replace(r, pkg+".", "", 1)
+
+		r = pkg + "." + r
+
+		if t.IsNullable {
+			r = "*" + r
+		}
+
+		// Special case for mutation/query always pointer
+		if strings.HasSuffix(r, "Resolver") && !t.IsNullable {
+			r = "*" + r
+		}
+	}
+
 	if t.Type == nil {
 		return r
 	}
@@ -221,6 +242,8 @@ func GenResolver(f *FieldDef, isModel bool, pkg string) string {
 
 				r += f.Type.GQLType + "{" + ref + "r." + f.Parent + "." + capitalise(f.Name) + "}"
 			}
+		} else if f.Name == "nid" { // Gleez Infra - Node ID
+			r += " r." + f.Parent + ".ID"
 		} else {
 			r += "r." + f.Parent + "." + capitalise(f.Name)
 		}

@@ -69,9 +69,10 @@ type TypeDef struct {
 
 	IsQuery     bool
 	IsMutation  bool
-	IsScalar    bool
 	IsInterface bool
+	IsObject    bool
 	IsInput     bool
+	IsScalar    bool
 	IsModel     bool
 
 	gqlType *introspection.Type
@@ -292,6 +293,7 @@ func (g *CodeGen) Generate(args *ArgType) error {
 				//log.Printf("Graphql type %s", typName)
 				payloads[gtp.Name] = gtp
 			} else {
+				gtp.IsObject = true
 				types = append(types, gtp)
 			}
 		case gqlSCALAR:
@@ -315,7 +317,7 @@ func (g *CodeGen) Generate(args *ArgType) error {
 
 	for _, t := range types {
 		// Set models
-		if !t.IsInterface && !t.IsQuery && !t.IsMutation && !t.IsScalar && !t.IsInput {
+		if t.IsObject {
 			for _, i := range t.Interfaces {
 				// Get Node implemented types - We can use this info create MODELS etc
 				if i == "Node" {
@@ -331,7 +333,7 @@ func (g *CodeGen) Generate(args *ArgType) error {
 
 	for _, t := range types {
 		// For types
-		if !t.IsInterface && !t.IsQuery && !t.IsMutation && !t.IsScalar && !t.IsInput {
+		if t.IsObject {
 
 			// Generate Types
 			if err := g.generateType(args, t, models); err != nil {
