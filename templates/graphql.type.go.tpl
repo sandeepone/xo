@@ -7,7 +7,9 @@
   // {{.Name}} {{.Description}}
   type {{.Name}} struct {
     {{- range .Fields}}
-      {{capitalize .Name}} {{genType .Type "struct" .Name "package"}}  `json:"{{.Name}}"` // {{capitalize .Name}} {{.Description}}
+      {{- if ne .Name "nid" }}
+        {{capitalize .Name}} {{genType .Type "struct" .Name "package"}}  `json:"{{.Name}}"` // {{capitalize .Name}} {{.Description}}
+      {{- end}}
     {{- end}}
   }
   
