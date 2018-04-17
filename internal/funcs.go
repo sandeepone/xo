@@ -73,6 +73,7 @@ func (a *ArgType) NewTemplateFuncs() template.FuncMap {
 		"genResolver":        GenResolver,
 		"genInterface":       GenInterface,
 		"genFuncArgs":        GenFuncArgs,
+		"isPayloadType":      IsPayloadType,
 	}
 }
 

@@ -279,3 +279,11 @@ func GenFuncArgs(f *FieldDef, mode, pkg string) string {
 	r += "}"
 	return r
 }
+
+// Check if the mutation Payload type is not golang types and ends with resolver ex: UserResolver
+func IsPayloadType(f *FieldDef, mode, pkg string) bool {
+	res := GenType(f.Type, "interface", f.Name, pkg)
+	ok := KnownGoTypes[f.Type.GoType]
+
+	return strings.HasSuffix(res, "Resolver") && !ok
+}

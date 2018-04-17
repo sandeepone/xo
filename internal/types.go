@@ -15,11 +15,9 @@ const (
 	QueryTypeTemplate
 	QueryTemplate
 
-	GraphQLBundleTemplate
 	GraphQLTypeTemplate
 	GraphQLModelTemplate
 	GraphQLQueryTemplate
-	GraphQLMutationTemplate
 	GraphQLLoaderTemplate
 
 	// always last
@@ -46,16 +44,12 @@ func (tt TemplateType) String() string {
 		s = "querytype"
 	case QueryTemplate:
 		s = "query"
-	case GraphQLBundleTemplate:
-		s = "graphql.bundle"
 	case GraphQLTypeTemplate:
 		s = "graphql.type"
 	case GraphQLModelTemplate:
 		s = "graphql.model"
 	case GraphQLQueryTemplate:
 		s = "graphql.query"
-	case GraphQLMutationTemplate:
-		s = "graphql.mutation"
 	case GraphQLLoaderTemplate:
 		s = "graphql.loader"
 	default:
