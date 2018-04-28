@@ -90,7 +90,7 @@
   }
   
   {{ range .Fields}}
-    // {{capitalize .Name}} {{.Description}} - {{.Type.GQLType}}
+    // {{capitalize .Name}} {{.Description}}
     func (r *{{capitalize .Parent}}Resolver) {{capitalize .Name}}() {{genType .Type "interface" .Name "objects"}} {
       {{- if eq .Type.GQLType "graphql.ID" }}
         return {{ if .Type.IsNullable }} & {{- end}}graphql.ID(r.{{capitalize .Parent}}.{{capitalize .Name}})
